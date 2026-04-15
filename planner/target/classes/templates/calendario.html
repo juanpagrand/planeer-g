@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planificador - Calendario</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <style>
+        /* Compact view for cards placed in calendar cells */
+        .day-content .equipo-card {
+            padding: 0.4rem !important;
+            margin-bottom: 0 !important;
+        }
+        .day-content .equipo-card p {
+            font-size: 0.75rem !important;
+            margin-bottom: 0.3rem !important;
+            line-height: 1.2 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .day-content .equipo-card .tag-badge {
+            font-size: 0.6rem !important;
+            padding: 0.15rem 0.3rem !important;
+            max-width: 100px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .day-content .equipo-card .badge-normal, .day-content .equipo-card .badge-critical {
+            font-size: 0.5rem !important;
+            padding: 0.1rem 0.2rem !important;
+        }
+        .day-content .equipo-card > div:first-child {
+            margin-bottom: 0.2rem !important;
+        }
+        .day-content .equipo-card > div:last-child {
+            font-size: 0.6rem !important;
+        }
+        .day-content .equipo-card svg {
+            width: 10px;
+            height: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Ambiente de fondo -->
+    <div class="background-elements">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="grid-layer"></div>
+    </div>
+
+    <!-- Navegación -->
+    <nav class="navbar">
+        <div class="nav-group">
+            <ul class="nav-links primary-links">
+                <li><a th:href="@{/}">inicio</a></li>
+                <li><a href="#">historial</a></li>
+            </ul>
+            <ul class="nav-links secondary-links">
+                <li><a th:href="@{/equipos}">equipos</a></li>
+                <li><a th:href="@{/correctivos}">correctivos</a></li>
+            </ul>
+        </div>
+        
+        <form th:action="@{/logout}" method="post" class="logout-form">
+            <button type="submit" class="logout-btn">Cerrar Sesión</button>
+        </form>
+    </nav>
+
+    <!-- Contenedor del Calendario -->
+    <main class="dashboard-container cal-container" id="mainContainer" style="transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1); margin-left: 0;">
+        <div class="calendar-wrapper">
+            <div class="calendar-header-title">
+                <h1 th:text="${mesNombre} + ' ' + ${anio}">Mes Año</h1>
+                <div class="view-controls" style="display: flex; gap: 1rem; align-items: center;">
+                    
+                    <!-- Menú de Taller -->
+                    <div class="taller-dropdown-container" style="position: relative;">
+                        <button class="view-btn dropdown-toggle" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.3); color: #93c5fd; display: flex; align-items: center; gap: 0.5rem;" onclick="toggleTallerMenu(event)">
+                            <span th:text="${tallerNavegacion == 'Todos' ? 'Taller' : tallerNavegacion}">Taller</span>
+                            <span style="font-size: 0.8em;">▼</span>
+                        </button>
+                        <div class="taller-menu" id="tallerMenu" style="display: none; position: absolute; top: calc(100% + 5px); left: 0; background: var(--bg-card); border: 1px solid var(--border-color); box-shadow: 0 5px 25px rgba(0,0,0,0.8); border-radius: 8px; z-index: 100; min-width: 160px; flex-direction: column; overflow: hidden; backdrop-filter: blur(15px); padding: 0.4rem; gap: 0.2rem;">
+                            <a th:href="@{/calendario(id=${planId}, year=${anio}, month=${mes})}" class="taller-select-btn">Ver Todos</a>
+                            <a th:href="@{/calendario(id=${planId}, year=${anio}, month=${mes}, taller='Mecanico')}" class="taller-select-btn">Mecánico</a>
+                            <a th:href="@{/calendario(id=${planId}, year=${anio}, month=${mes}, taller='Instrumentista')}" class="taller-select-btn">Instrumentista</a>
+                            <a th:href="@{/calendario(id=${planId}, year=${anio}, month=${mes}, taller='Pintor')}" class="taller-select-btn">Pintor</a>
+                            <a th:href="@{/calendario(id=${planId}, year=${anio}, month=${mes}, taller='Civil')}" class="taller-select-btn">Civil</a>
+                            <a th:href="@{/calendario(id=${planId}, year=${anio}, month=${mes}, taller='Electricista')}" class="taller-select-btn">Electricista</a>
+                        </div>
+                    </div>
+
+                    <div class="view-toggle">
+                        <button class="view-btn active-view" id="btnViewMonth" onclick="setMode('month')">Ver por Mes</button>
+                        <button class="view-btn" id="btnViewWeek" onclick="setMode('week')">Ver por Semana</button>
+                    </div>
+                    <div class="week-nav" id="weekNavControls" style="display: none;">
+                        <button class="nav-arrow" id="btnPrevWeek" onclick="prevWeek()">&lt;</button>
+                        <span class="week-label" id="weekLabel">Sem. 1</span>
+                        <button class="nav-arrow" id="btnNextWeek" onclick="nextWeek()">&gt;</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="calendar-grid">
+                <!-- Días de la semana -->
+                <div class="cal-day-header">Lunes</div>
+                <div class="cal-day-header">Martes</div>
+                <div class="cal-day-header">Miércoles</div>
+                <div class="cal-day-header">Jueves</div>
+                <div class="cal-day-header">Viernes</div>
+                <div class="cal-day-header">Sábado</div>
+                <div class="cal-day-header">Domingo</div>
+
+                <!-- Espacios vacíos previos para que Lunes calce correctamente -->
+                <div th:each="vacio : ${diasPrevios}" class="cal-cell empty-cell"></div>
+
+                <!-- Días del mes (números) -->
+                <div th:each="dia : ${diasDelMes}" class="cal-cell day-cell">
+                    <span class="day-number" th:text="${dia}">1</span>
+                    <div class="day-content" th:id="'day-content-' + ${dia}" ondragover="allowDrop(event)" th:attr="ondrop='dropEquipo(event, \'day-' + ${dia} + '\')'" style="min-height: 80px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <!-- Aquí se inyectan tarjetas de equipo -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+    </main>
+
+    <script th:inline="javascript">
+        let mode = 'month';
+        let currentWeekIndex = 0;
+        let totalWeeks = 0;
+        
+        // Asignar dataset de semana al cargar DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            const cells = document.querySelectorAll('.cal-cell');
+            cells.forEach((cell, index) => {
+                const weekNum = Math.floor(index / 7);
+                cell.setAttribute('data-week', weekNum);
+            });
+            totalWeeks = Math.ceil(cells.length / 7);
+        });
+
+        function setMode(newMode) {
+            mode = newMode;
+            
+            const btnMonth = document.getElementById('btnViewMonth');
+            const btnWeek = document.getElementById('btnViewWeek');
+            const weekControls = document.getElementById('weekNavControls');
+
+            if (mode === 'week') {
+                btnWeek.classList.add('active-view');
+                btnMonth.classList.remove('active-view');
+                weekControls.style.display = 'flex';
+                document.getElementById('equiposToggleBtn').style.display = 'block';
+                // Reset a primera semana
+                currentWeekIndex = 0;
+                renderWeek();
+            } else {
+                btnMonth.classList.add('active-view');
+                btnWeek.classList.remove('active-view');
+                weekControls.style.display = 'none';
+                document.getElementById('equiposToggleBtn').style.display = 'none';
+                
+                // Mostrar todos
+                document.querySelectorAll('.cal-cell').forEach(cell => {
+                    cell.style.display = 'flex';
+                });
+            }
+        }
+
+        function renderWeek() {
+            document.getElementById('weekLabel').textContent = `Sem. ${currentWeekIndex + 1}`;
+            
+            // Administramos visibilidad basada en el indice actual
+            document.querySelectorAll('.cal-cell').forEach(cell => {
+                const w = parseInt(cell.getAttribute('data-week'));
+                if (w === currentWeekIndex) {
+                    cell.style.display = 'flex';
+                } else {
+                    cell.style.display = 'none';
+                }
+            });
+
+            // Desactivar botones de limite
+            document.getElementById('btnPrevWeek').disabled = (currentWeekIndex === 0);
+            document.getElementById('btnNextWeek').disabled = (currentWeekIndex === totalWeeks - 1);
+        }
+
+        function prevWeek() {
+            if (currentWeekIndex > 0) {
+                currentWeekIndex--;
+                renderWeek();
+            }
+        }
+
+        function nextWeek() {
+            if (currentWeekIndex < totalWeeks - 1) {
+                currentWeekIndex++;
+                renderWeek();
+            }
+        }
+        
+        function toggleTallerMenu(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const menu = document.getElementById('tallerMenu');
+            menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        document.addEventListener('click', () => {
+             const menu = document.getElementById('tallerMenu');
+             if(menu) menu.style.display = 'none';
+        });
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('equiposSidebar');
+            const mainContainer = document.getElementById('mainContainer');
+            
+            if (sidebar.style.left === '-400px' || sidebar.style.left === '') {
+                sidebar.style.left = '0';
+                mainContainer.style.marginLeft = '400px';
+                mainContainer.style.width = 'calc(100% - 400px)';
+            } else {
+                sidebar.style.left = '-400px';
+                mainContainer.style.marginLeft = '0';
+                mainContainer.style.width = '100%';
+            }
+        }
+
+        /* --- LOGICA DRAG AND DROP --- */
+        const yearBase = document.querySelector('input[name="year"]') ? document.querySelector('input[name="year"]').value : '0';
+        const monthBase = document.querySelector('input[name="month"]') ? document.querySelector('input[name="month"]').value : '0';
+        const planIdBase = document.querySelector('input[name="id"]') ? document.querySelector('input[name="id"]').value : '0';
+        // Llave única por ID de plan o en defecto por año y mes
+        let storageKey = 'planner_draft_';
+        if (planIdBase !== '0' && planIdBase !== '') storageKey += 'planId_' + planIdBase;
+        else storageKey += yearBase + '_' + monthBase;
+
+        let dbDraft = [];
+        /*[# th:each="det : ${detallesGuardados}"]*/
+        dbDraft.push({ equipoId: /*[[${det.equipo.id}]]*/ 0, dia: /*[[${det.dia}]]*/ 0, taller: /*[[${det.equipo.taller}]]*/ '' });
+        /*[/]*/
+
+        // Draft del navegador
+        let draft = JSON.parse(localStorage.getItem(storageKey) || "[]");
+
+        if (draft.length === 0 && dbDraft.length > 0) {
+            draft = dbDraft;
+            localStorage.setItem(storageKey, JSON.stringify(draft));
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+        }
+
+        function dragStart(e) {
+            const eqId = e.target.getAttribute('data-equipo-id');
+            e.dataTransfer.setData('text/plain', eqId);
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function dropEquipo(e, dropZoneStr) {
+            e.preventDefault();
+            const equipoId = e.dataTransfer.getData('text/plain');
+            if (!equipoId) return;
+
+            const equipoEl = document.querySelector(`.equipo-card[data-equipo-id="${equipoId}"]`);
+            if (!equipoEl) return;
+
+            // Remove previous draft assignment for this equipoId
+            draft = draft.filter(d => d.equipoId != equipoId);
+            
+            if (dropZoneStr !== 'sidebar') {
+                const diaMatch = dropZoneStr.match(/day-(\d+)/);
+                if (diaMatch) {
+                    const dia = parseInt(diaMatch[1]);
+                    const taller = equipoEl.getAttribute('data-taller');
+                    draft.push({ equipoId: parseInt(equipoId), dia: dia, taller: taller });
+                    
+                    const dropTarget = document.getElementById('day-content-' + dia);
+                    if(dropTarget) dropTarget.appendChild(equipoEl);
+                }
+            } else {
+                // Return to sidebar
+                const sbTarget = document.getElementById('sidebar-equipos-container');
+                if(sbTarget) sbTarget.appendChild(equipoEl);
+            }
+
+            localStorage.setItem(storageKey, JSON.stringify(draft));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup submit listener to populate hidden assignments
+            const saveForm = document.getElementById('savePlanForm');
+            if (saveForm) {
+                saveForm.addEventListener('submit', function(e) {
+                    document.getElementById('asignacionesJson').value = JSON.stringify(draft);
+                    localStorage.removeItem(storageKey); 
+                });
+            }
+
+            // Restore assignments directly on load
+            draft.forEach(asig => {
+                const eqEl = document.querySelector(`.equipo-card[data-equipo-id="${asig.equipoId}"]`);
+                if (eqEl) {
+                    const target = document.getElementById('day-content-' + asig.dia);
+                    if (target) {
+                        target.appendChild(eqEl);
+                    }
+                }
+            });
+        });
+    </script>
+    
+    <!-- Botón de Guardado Flotante -->
+    <div class="floating-save-container" th:if="${estado != 'FINALIZADO'}" style="position: fixed; bottom: 3rem; left: 3rem; z-index: 100;">
+        <form th:action="@{/calendario/guardar}" method="post" id="savePlanForm">
+            <input type="hidden" name="id" th:value="${planId}">
+            <input type="hidden" name="year" th:value="${anio}">
+            <input type="hidden" name="month" th:value="${mes}">
+            <input type="hidden" name="asignacionesJson" id="asignacionesJson">
+            <button type="submit" class="btn-save" style="padding: 1rem 2.5rem; font-size: 1.1rem; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4); border-radius: 50px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; cursor: pointer; transition: all 0.3s ease;">Guardar Programación</button>
+        </form>
+    </div>
+
+    <!-- Botón de Equipos Flotante (Solo Semana) -->
+    <div class="floating-equipos-container" id="equiposToggleBtn" style="display: none; position: fixed; bottom: 3rem; right: 3rem; z-index: 100;">
+        <button onclick="toggleSidebar()" class="btn-equipos" style="padding: 1rem 2.5rem; font-size: 1.1rem; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4); border-radius: 50px; background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); color: white; border: none; cursor: pointer; transition: all 0.3s ease;">
+            Equipos <span th:if="${tallerNavegacion != 'Todos'}" th:text="'- ' + ${tallerNavegacion}"></span>
+        </button>
+    </div>
+
+    <!-- Slide bar (Sidebar) de Equipos -->
+    <div id="equiposSidebar" style="position: fixed; top: 0; left: -400px; width: 400px; max-width: 85%; height: 100%; z-index: 200; background: var(--bg-card); box-shadow: 5px 0 25px rgba(0,0,0,0.5); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column;">
+            
+        <div class="sidebar-header" style="padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 1.2rem; color: #f8fafc;">
+                Equipos <span th:if="${tallerNavegacion != 'Todos'}" th:text="${tallerNavegacion}"></span>
+            </h3>
+            <button onclick="toggleSidebar()" style="background: transparent; border: none; font-size: 2rem; color: #9ca3af; cursor: pointer; line-height: 1;">&times;</button>
+        </div>
+        
+        <div class="sidebar-body" style="padding: 1.5rem; flex: 1; overflow-y: auto;" ondragover="allowDrop(event)" th:attr="ondrop='dropEquipo(event, \'sidebar\')'">
+            <p style="color: #9ca3af; font-size: 0.95rem; margin-bottom: 1.5rem;">Programación para <span th:text="${mesNombre} + ' ' + ${anio}" style="color: #cbd5e1; font-weight: 500;"></span></p>
+            <div id="sidebar-equipos-container" style="display: flex; flex-direction: column; gap: 1rem; min-height: 100px;">
+                
+                <div th:each="equipo : ${equipos}" class="equipo-card" draggable="true" ondragstart="dragStart(event)" th:data-equipo-id="${equipo.id}" th:data-taller="${equipo.taller}" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; cursor: grab; transition: transform 0.2s, box-shadow 0.2s;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; align-items: center;">
+                        <span class="tag-badge" th:text="${equipo.tag}" style="background: rgba(59,130,246,0.15); color: #93c5fd; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8em; font-weight: 600;"></span>
+                        <span th:class="${equipo.criticidad != null && equipo.criticidad > 0 ? 'badge-critical' : 'badge-normal'}" th:text="${equipo.criticidad != null && equipo.criticidad > 0 ? 'Crítico (' + equipo.criticidad + ')' : 'Normal (' + (equipo.criticidad == null ? 0 : equipo.criticidad) + ')'}" th:style="${equipo.criticidad != null && equipo.criticidad > 0 ? 'font-size: 0.75rem; color: #fca5a5; background: rgba(239,68,68,0.15); padding: 0.2rem 0.5rem; border-radius: 4px;' : 'font-size: 0.75rem; color: #6ee7b7; background: rgba(52,211,153,0.15); padding: 0.2rem 0.5rem; border-radius: 4px;'}"></span>
+                    </div>
+                    <p style="color: #e5e7eb; font-size: 0.95rem; margin-bottom: 1rem; line-height: 1.4;" th:text="${equipo.descripcion}"></p>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #9ca3af;">
+                        <span style="display: flex; align-items: center; gap: 0.3rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg> <span th:text="${equipo.taller}"></span></span>
+                        <span style="display: flex; align-items: center; gap: 0.3rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> <span th:text="${equipo.duracion} + 'h'"></span></span>
+                    </div>
+                </div>
+
+                <div th:if="${#lists.isEmpty(equipos)}" style="text-align: center; padding: 2rem; color: #9ca3af; font-style: italic; background: rgba(255,255,255,0.02); border-radius: 8px;">
+                    No hay equipos programados.
+                </div>
+
+            </div>
+        </div>
+        
+    </div>
+</body>
+</html>

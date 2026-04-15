@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planificador de Equipos - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+</head>
+<body>
+
+    <!-- Ambiente interactivo de fondo heredado del login -->
+    <div class="background-elements">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="grid-layer"></div>
+    </div>
+
+    <!-- Barra de Navegación según el wireframe -->
+    <nav class="navbar">
+        <div class="nav-group">
+            <ul class="nav-links primary-links">
+                <li><a th:href="@{/}" class="active">inicio</a></li>
+                <li><a th:href="@{/historial}">historial</a></li>
+            </ul>
+            <ul class="nav-links secondary-links">
+                <li><a th:href="@{/equipos}">equipos</a></li>
+                <li><a th:href="@{/correctivos}">correctivos</a></li>
+            </ul>
+        </div>
+        
+        <form th:action="@{/logout}" method="post" class="logout-form">
+            <button type="submit" class="logout-btn">Cerrar Sesión</button>
+        </form>
+    </nav>
+
+    <!-- Contenedor Principal (Tarjetas) -->
+    <main class="dashboard-container">
+        <div class="cards-grid">
+            
+            <!-- Mostrar Planes Activos Guardados (Con Menú de ... en Hover) -->
+            <div class="dashboard-card interactive-card plan-wrapper" th:each="plan : ${planesActivos}" style="position: relative; display: flex;">
+                <a th:href="@{/calendario(id=${plan.id})}" style="flex: 1; text-decoration: none;">
+                    <div class="card-content" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 100%;">
+                        <h3 style="color: var(--text-light); font-size: 1.5rem; text-transform: capitalize; margin-bottom: 0.5rem;" th:text="${__${'plan_' + plan.id}__}">Plan</h3>
+                        <span class="tag-badge badge-normal" th:text="${plan.estado}">ACTIVO</span>
+                    </div>
+                </a>
+                
+                <div class="menu-dots-container">
+                    <button class="dots-btn" onclick="toggleDots(event, this)">⋮</button>
+                    <div class="dots-dropdown">
+                        <form th:action="@{/calendario/finalizar}" method="post" onsubmit="return confirm('¿Finalizar este mes?')">
+                            <input type="hidden" name="id" th:value="${plan.id}">
+                            <button type="submit" class="dropdown-item">Finalizar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tarjeta 2: Botón de Agregar (El Signo de + gigante del mockup) -->
+            <a href="#" class="dashboard-card interactive-card card-plus" onclick="openProgModal(event)">
+                <div class="card-content">
+                    <!-- Icono de '+' grande -->
+                    <svg class="card-icon plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </div>
+            </a>
+
+        </div>
+    </main>
+
+    <!-- Script para efecto de ratón (glow) en tarjetas idéntico al del login -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Revisión de errores de la URL (si el mes ya existe activo)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('error') === 'existe_activo') {
+                alert('¡Ese mes ya se encuentra activo en tu tablero!');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            
+            const cards = document.querySelectorAll('.interactive-card');
+            
+            cards.forEach(card => {
+                card.addEventListener('mousemove', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    card.style.setProperty('--mouse-x', `${x}px`);
+                    card.style.setProperty('--mouse-y', `${y}px`);
+                });
+            });
+        });
+        
+        // Logica para menu contextual de tres puntos
+        function toggleDots(e, btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Cerrar todos los menus abiertos
+            document.querySelectorAll('.menu-dots-container').forEach(c => {
+                if(c !== btn.parentElement) c.classList.remove('active');
+            });
+            
+            const container = btn.parentElement;
+            container.classList.toggle('active');
+        }
+
+        // Cerrar menú al golpear fuera
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.menu-dots-container').forEach(c => {
+                c.classList.remove('active');
+            });
+        });
+    </script>
+    
+    <!-- Modal para programar mes -->
+    <div class="modal-overlay" id="progModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Programar un Mes</h3>
+                <button class="close-modal" onclick="closeProgModal()">×</button>
+            </div>
+            <form id="progForm" action="/calendario" method="get">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Mes</label>
+                        <select name="month" class="modal-input" required>
+                            <option value="1">Enero</option>
+                            <option value="2">Febrero</option>
+                            <option value="3">Marzo</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Mayo</option>
+                            <option value="6">Junio</option>
+                            <option value="7">Julio</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Año</label>
+                        <input type="number" name="year" class="modal-input" value="2026" min="2020" max="2100" required>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeProgModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">Ver Calendario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        function openProgModal(e) {
+            e.preventDefault();
+            const date = new Date();
+            // Select current month
+            document.querySelector('select[name="month"]').value = date.getMonth() + 1;
+            // Select current year
+            document.querySelector('input[name="year"]').value = date.getFullYear();
+            
+            document.getElementById('progModal').classList.add('active');
+        }
+        
+        function closeProgModal() {
+            document.getElementById('progModal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>

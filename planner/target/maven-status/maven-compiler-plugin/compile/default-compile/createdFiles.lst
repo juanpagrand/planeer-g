@@ -1,0 +1,16 @@
+com\planer\planner\config\SecurityConfig.class
+com\planer\planner\repository\PlanMensualRepository.class
+com\planer\planner\model\PlanMensual.class
+com\planer\planner\controller\HomeController.class
+com\planer\planner\controller\EquipoController.class
+com\planer\planner\repository\EquipoRepository.class
+com\planer\planner\controller\ProgramacionController.class
+com\planer\planner\model\PlanDetalle.class
+com\planer\planner\model\Admin.class
+com\planer\planner\PlannerApplication.class
+com\planer\planner\model\Equipo.class
+com\planer\planner\security\CustomUserDetailsService.class
+com\planer\planner\repository\PlanDetalleRepository.class
+com\planer\planner\runner\DataInitializer.class
+com\planer\planner\controller\LoginController.class
+com\planer\planner\repository\AdminRepository.class

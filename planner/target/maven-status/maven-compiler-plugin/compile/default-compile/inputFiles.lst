@@ -1,0 +1,16 @@
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\config\SecurityConfig.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\controller\EquipoController.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\controller\HomeController.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\controller\LoginController.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\controller\ProgramacionController.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\model\Admin.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\model\Equipo.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\model\PlanDetalle.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\model\PlanMensual.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\PlannerApplication.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\repository\AdminRepository.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\repository\EquipoRepository.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\repository\PlanDetalleRepository.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\repository\PlanMensualRepository.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\runner\DataInitializer.java
+c:\Users\juane\Downloads\planner\src\main\java\com\planer\planner\security\CustomUserDetailsService.java

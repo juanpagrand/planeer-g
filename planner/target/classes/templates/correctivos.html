@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planificador de Equipos - Correctivos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+</head>
+<body>
+
+    <!-- Ambiente interactivo de fondo heredado del login -->
+    <div class="background-elements">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="grid-layer"></div>
+    </div>
+
+    <!-- Barra de Navegación -->
+    <nav class="navbar">
+        <div class="nav-group">
+            <ul class="nav-links primary-links">
+                <li><a th:href="@{/}">inicio</a></li>
+                <li><a th:href="@{/historial}">historial</a></li>
+            </ul>
+            <ul class="nav-links secondary-links">
+                <li><a th:href="@{/equipos}">equipos</a></li>
+                <li><a th:href="@{/correctivos}" class="active">correctivos</a></li>
+            </ul>
+        </div>
+        
+        <form th:action="@{/logout}" method="post" class="logout-form">
+            <button type="submit" class="logout-btn">Cerrar Sesión</button>
+        </form>
+    </nav>
+
+    <!-- Contenedor Principal (Tabla) -->
+    <main class="dashboard-container table-container">
+        <div class="table-wrapper">
+            <div class="table-header flex-header">
+                <h2>Directorio de Correctivos</h2>
+                <div class="header-controls">
+                    <div class="search-wrapper">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input type="text" id="searchInput" class="search-input" placeholder="Buscar correctivo...">
+                    </div>
+                    <button class="toggle-btn" id="toggleInactiveBtn">Ver correctivos finalizados</button>
+                    <button class="add-btn" onclick="openModal()">+ Nuevo Correctivo</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="equipos-table" id="equiposTable">
+                    <thead>
+                        <tr>
+                            <th>Tag</th>
+                            <th>Descripción</th>
+                            <th>Programación</th>
+                            <th>Taller</th>
+                            <th>Tipo</th>
+                            <th>Buque</th>
+                            <th>Mes Inicial</th>
+                            <th>Fecha Próxima</th>
+                            <th>Duración</th>
+                            <th>Criticidad</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="equipo : ${equipos}" 
+                            class="equipo-row" 
+                            th:data-status="${equipo.activo ? 'active' : 'inactive'}"
+                            th:style="${equipo.activo ? '' : 'display: none; opacity: 0.6;'}">
+                            
+                            <td class="tag-cell"><span class="tag-badge" th:text="${equipo.tag}"></span></td>
+                            <td class="desc-cell" th:text="${equipo.descripcion}"></td>
+                            <td th:text="${equipo.criterioProgramacion}"></td>
+                            <td class="taller-cell" th:text="${equipo.taller}"></td>
+                            <td th:text="${equipo.tipo}"></td>
+                            <td th:text="${equipo.buque}"></td>
+                            <td th:text="${equipo.mesInicial}"></td>
+                            <td th:text="${equipo.fechaProxima}"></td>
+                            <td th:text="${equipo.duracion}"></td>
+                            <td><span th:class="${equipo.criticidad == 1 ? 'tag-badge badge-critical' : 'tag-badge badge-normal'}" th:text="${equipo.criticidad == 1 ? 'Crítico (1)' : 'Normal (0)'}"></span></td>
+                            <td class="actions-cell">
+                                <div class="action-buttons">
+                                    <button class="edit-btn" 
+                                            th:data-id="${equipo.id}"
+                                            th:data-tag="${equipo.tag}"
+                                            th:data-desc="${equipo.descripcion}"
+                                            th:data-crit="${equipo.criterioProgramacion}"
+                                            th:data-taller="${equipo.taller}"
+                                            th:data-tipo="${equipo.tipo}"
+                                            th:data-buque="${equipo.buque}"
+                                            th:data-mes="${equipo.mesInicial}"
+                                            th:data-fecha="${equipo.fechaProxima}"
+                                            th:data-dur="${equipo.duracion}"
+                                            th:data-activo="${equipo.activo}"
+                                            th:data-criticidad="${equipo.criticidad}"
+                                            onclick="openModal(this)">
+                                        Editar
+                                    </button>
+                                    <form th:action="@{/equipos/toggle/{id}(id=${equipo.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="toggle-status-btn" th:classappend="${equipo.activo ? 'btn-deactivate' : 'btn-activate'}" th:text="${equipo.activo ? 'Desactivar' : 'Activar'}"></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- Si no hay equipos -->
+                        <tr th:if="${#lists.isEmpty(equipos)}">
+                            <td colspan="8" class="empty-state">No hay equipos registrados en la base de datos.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Form for Create/Edit -->
+    <div class="modal-overlay" id="equipoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Nuevo Correctivo</h3>
+                <button class="close-modal" onclick="closeModal()">×</button>
+            </div>
+            <form th:action="@{/equipos/guardar}" method="post" id="equipoForm">
+                <input type="hidden" name="id" id="equipoId">
+                <input type="hidden" name="activo" id="equipoActivo" value="true">
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Tag del Correctivo</label>
+                        <input type="text" name="tag" id="tagInput" class="modal-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Taller</label>
+                        <select name="taller" id="tallerInput" class="modal-input">
+                            <option value="M">M</option>
+                            <option value="I">I</option>
+                            <option value="E">E</option>
+                            <option value="C">C</option>
+                            <option value="P">P</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <input type="text" name="tipo" id="tipoInput" class="modal-input" readonly value="correctivo" title="No editable en esta pestaña">
+                    </div>
+                    <div class="form-group">
+                        <label>Criticidad</label>
+                        <select name="criticidad" id="criticidadInput" class="modal-input">
+                            <option value="0">Normal (0)</option>
+                            <option value="1">Crítico (1)</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Descripción</label>
+                        <textarea name="descripcion" id="descInput" class="modal-input" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha Próxima</label>
+                        <input type="date" name="fechaProxima" id="fechaInput" class="modal-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Duración</label>
+                        <input type="text" name="duracion" id="durInput" class="modal-input">
+                    </div>
+                </div>
+                <!-- Hidden inputs for omitted generic fields to preserve them if edited -->
+                <input type="hidden" name="criterioProgramacion" id="critInput">
+                <input type="hidden" name="buque" id="buqueInput">
+                <input type="hidden" name="mesInicial" id="mesInput">
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">Guardar Correctivo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script para Modal y Búsqueda Frontend (Óptimo) -->
+    <script>
+        // Modal logic
+        function openModal(btnEl = null) {
+            const modal = document.getElementById('equipoModal');
+            const form = document.getElementById('equipoForm');
+            const title = document.getElementById('modalTitle');
+            
+            if (btnEl) {
+                // Modo Edición
+                title.textContent = 'Editar Correctivo';
+                document.getElementById('equipoId').value = btnEl.getAttribute('data-id');
+                document.getElementById('equipoActivo').value = btnEl.getAttribute('data-activo');
+                document.getElementById('tagInput').value = btnEl.getAttribute('data-tag');
+                document.getElementById('descInput').value = btnEl.getAttribute('data-desc');
+                document.getElementById('critInput').value = btnEl.getAttribute('data-crit');
+                document.getElementById('tallerInput').value = btnEl.getAttribute('data-taller') || 'M';
+                document.getElementById('tipoInput').value = btnEl.getAttribute('data-tipo') || 'correctivo';
+                document.getElementById('buqueInput').value = btnEl.getAttribute('data-buque');
+                document.getElementById('mesInput').value = btnEl.getAttribute('data-mes');
+                document.getElementById('fechaInput').value = btnEl.getAttribute('data-fecha');
+                document.getElementById('durInput').value = btnEl.getAttribute('data-dur');
+                document.getElementById('criticidadInput').value = btnEl.getAttribute('data-criticidad') || '0';
+            } else {
+                title.textContent = 'Nuevo Correctivo';
+                form.reset();
+                document.getElementById('equipoId').value = '';
+                document.getElementById('equipoActivo').value = 'true';
+                document.getElementById('criticidadInput').value = '0';
+                document.getElementById('tipoInput').value = 'correctivo';
+                document.getElementById('tallerInput').value = 'M';
+            }
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('equipoModal').classList.remove('active');
+        }
+
+        // Cache Search Strings for peak performance (O(1) lookup during typing)
+        window.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.equipo-row').forEach(row => {
+                const textData = Array.from(row.querySelectorAll('td'))
+                    .map(td => td.innerText.toLowerCase())
+                    .join(' ');
+                row.setAttribute('data-search-cache', textData);
+            });
+        });
+
+        // Search logic (Optimized Client-side fast filtering)
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('.equipo-row');
+            
+            rows.forEach(row => {
+                const isInactiveRow = row.getAttribute('data-status') === 'inactive';
+                
+                // Skip rows not belonging to the current view mode
+                if (showingInactive ? !isInactiveRow : isInactiveRow) {
+                    row.style.display = 'none';
+                    return;
+                }
+
+                const cache = row.getAttribute('data-search-cache');
+                if (cache && cache.includes(term)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        // Toggle Inactive Logic
+        let showingInactive = false;
+        document.getElementById('toggleInactiveBtn').addEventListener('click', function() {
+            showingInactive = !showingInactive;
+            this.textContent = showingInactive ? 'Ver correctivos activos' : 'Ver correctivos finalizados';
+            this.classList.toggle('active-filter');
+            
+            const rows = document.querySelectorAll('.equipo-row');
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            
+            rows.forEach(row => {
+                const isInactiveRow = row.getAttribute('data-status') === 'inactive';
+                
+                // Hide rows that don't match the toggle view
+                if (showingInactive ? !isInactiveRow : isInactiveRow) {
+                    row.style.display = 'none';
+                    return;
+                }
+                
+                // If it belongs to the active view, check if it matches search term
+                if (term === '') {
+                    row.style.display = '';
+                } else {
+                    const cache = row.getAttribute('data-search-cache');
+                    if (cache && cache.includes(term)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
