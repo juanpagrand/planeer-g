@@ -70,6 +70,19 @@ public class Equipo {
     public String getTaller() { return taller; }
     public void setTaller(String taller) { this.taller = taller; }
 
+    @Transient
+    public String getTallerNombre() {
+        if (taller == null) return "N/A";
+        switch (taller.toUpperCase().trim()) {
+            case "M": return "Mecánico";
+            case "I": return "Instrumentista";
+            case "E": return "Electricista";
+            case "C": return "Civil";
+            case "P": return "Pintor";
+            default: return taller;
+        }
+    }
+
     public String getMesInicial() { return mesInicial; }
     public void setMesInicial(String mesInicial) { this.mesInicial = mesInicial; }
 

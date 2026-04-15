@@ -75,7 +75,7 @@
                             <td class="tag-cell"><span class="tag-badge" th:text="${equipo.tag}"></span></td>
                             <td class="desc-cell" th:text="${equipo.descripcion}"></td>
                             <td th:text="${equipo.criterioProgramacion}"></td>
-                            <td class="taller-cell" th:text="${equipo.taller}"></td>
+                            <td class="taller-cell" th:text="${equipo.tallerNombre}"></td>
                             <td th:text="${equipo.tipo}"></td>
                             <td th:text="${equipo.buque}"></td>
                             <td th:text="${equipo.mesInicial}"></td>
@@ -130,16 +130,19 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Tag del Correctivo</label>
-                        <input type="text" name="tag" id="tagInput" class="modal-input" required>
+                        <select name="tag" id="tagInput" class="modal-input" required>
+                            <option value="">-- Seleccione un Equipo --</option>
+                            <option th:each="eb : ${equiposBase}" th:value="${eb.tag}" th:text="${eb.tag + ' - ' + eb.descripcion}"></option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Taller</label>
                         <select name="taller" id="tallerInput" class="modal-input">
-                            <option value="M">M</option>
-                            <option value="I">I</option>
-                            <option value="E">E</option>
-                            <option value="C">C</option>
-                            <option value="P">P</option>
+                            <option value="M">Mecánico</option>
+                            <option value="I">Instrumentista</option>
+                            <option value="E">Electricista</option>
+                            <option value="C">Civil</option>
+                            <option value="P">Pintor</option>
                         </select>
                     </div>
                     <div class="form-group">

@@ -45,6 +45,11 @@
                         <input type="text" id="searchInput" class="search-input" placeholder="Buscar equipo...">
                     </div>
                     <button class="toggle-btn" id="toggleInactiveBtn">Mostrar Desactivados</button>
+                    <a th:href="@{/equipos/excel/template}" class="toggle-btn" style="text-decoration: none; padding: 0.5rem 1rem;">⬇ Plantilla</a>
+                    <form id="excelForm" th:action="@{/equipos/excel/upload}" method="post" enctype="multipart/form-data" style="display:inline;">
+                        <button type="button" class="add-btn" onclick="document.getElementById('excelUpload').click()" style="background-color: #10B981;">⬆ Cargar Excel</button>
+                        <input type="file" name="file" id="excelUpload" accept=".xlsx, .xls" style="display:none;" onchange="this.form.submit()">
+                    </form>
                     <button class="add-btn" onclick="openModal()">+ Nuevo Equipo</button>
                 </div>
             </div>
@@ -75,7 +80,7 @@
                             <td class="tag-cell"><span class="tag-badge" th:text="${equipo.tag}"></span></td>
                             <td class="desc-cell" th:text="${equipo.descripcion}"></td>
                             <td th:text="${equipo.criterioProgramacion}"></td>
-                            <td class="taller-cell" th:text="${equipo.taller}"></td>
+                            <td class="taller-cell" th:text="${equipo.tallerNombre}"></td>
                             <td th:text="${equipo.tipo}"></td>
                             <td th:text="${equipo.buque}"></td>
                             <td th:text="${equipo.mesInicial}"></td>
@@ -135,11 +140,11 @@
                     <div class="form-group">
                         <label>Taller</label>
                         <select name="taller" id="tallerInput" class="modal-input">
-                            <option value="M">M</option>
-                            <option value="I">I</option>
-                            <option value="E">E</option>
-                            <option value="C">C</option>
-                            <option value="P">P</option>
+                            <option value="M">Mecánico</option>
+                            <option value="I">Instrumentista</option>
+                            <option value="E">Electricista</option>
+                            <option value="C">Civil</option>
+                            <option value="P">Pintor</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -156,7 +161,16 @@
                     </div>
                     <div class="form-group">
                         <label>Criterio Programación</label>
-                        <input type="text" name="criterioProgramacion" id="critInput" class="modal-input">
+                        <select name="criterioProgramacion" id="critInput" class="modal-input">
+                            <option value="Semanal">Semanal</option>
+                            <option value="Quincenal">Quincenal</option>
+                            <option value="Mensual">Mensual</option>
+                            <option value="Bimestral">Bimestral</option>
+                            <option value="Trimestral">Trimestral</option>
+                            <option value="Cuatrimestral">Cuatrimestral</option>
+                            <option value="Semestral">Semestral</option>
+                            <option value="Anual">Anual</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Criticidad</label>
@@ -167,7 +181,20 @@
                     </div>
                     <div class="form-group">
                         <label>Mes Inicial</label>
-                        <input type="text" name="mesInicial" id="mesInput" class="modal-input" placeholder="Ej. Enero">
+                        <select name="mesInicial" id="mesInput" class="modal-input">
+                            <option value="Enero">Enero</option>
+                            <option value="Febrero">Febrero</option>
+                            <option value="Marzo">Marzo</option>
+                            <option value="Abril">Abril</option>
+                            <option value="Mayo">Mayo</option>
+                            <option value="Junio">Junio</option>
+                            <option value="Julio">Julio</option>
+                            <option value="Agosto">Agosto</option>
+                            <option value="Septiembre">Septiembre</option>
+                            <option value="Octubre">Octubre</option>
+                            <option value="Noviembre">Noviembre</option>
+                            <option value="Diciembre">Diciembre</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Fecha Próxima</label>
