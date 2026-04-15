@@ -112,7 +112,10 @@ public class ProgramacionController {
         final List<Long> equiposGuardadosIds = detalles.stream().map(d -> d.getEquipo().getId()).toList();
 
         List<Equipo> equipos = equipoRepository.findAll().stream()
-                .filter(e -> Boolean.TRUE.equals(e.getActivo()))
+                .filter(e -> {
+                    if (equiposGuardadosIds.contains(e.getId())) return true;
+                    return Boolean.TRUE.equals(e.getActivo());
+                })
                 .filter(e -> {
                     if (equiposGuardadosIds.contains(e.getId()))
                         return true;
@@ -219,10 +222,27 @@ public class ProgramacionController {
             List<PlanDetalle> detalles = planDetalleRepository.findByPlanMensual(plan);
             for (PlanDetalle det : detalles) {
                 Equipo eq = det.getEquipo();
+                
+                if ("correctivo".equalsIgnoreCase(eq.getTipo())) {
+                    eq.setActivo(false);
+                    equipoRepository.save(eq);
+                    continue;
+                }
+                
                 String crit = eq.getCriterioProgramacion();
-                if (crit != null && !crit.trim().isEmpty() && det.getDia() != null) {
+                if (crit != null && !crit.trim().isEmpty()) {
                     try {
-                        LocalDate baseDate = LocalDate.of(plan.getAnio(), plan.getMes(), det.getDia());
+                        int diaOriginal = 1;
+                        if (eq.getFechaProxima() != null) {
+                            diaOriginal = eq.getFechaProxima().getDayOfMonth();
+                        } else if (det.getDia() != null) {
+                            diaOriginal = det.getDia();
+                        }
+                        
+                        YearMonth ym = YearMonth.of(plan.getAnio(), plan.getMes());
+                        diaOriginal = Math.min(diaOriginal, ym.lengthOfMonth());
+                        
+                        LocalDate baseDate = LocalDate.of(plan.getAnio(), plan.getMes(), diaOriginal);
                         LocalDate nextDate = calcularSiguienteFecha(baseDate, crit);
                         eq.setFechaProxima(nextDate);
                         equipoRepository.save(eq);

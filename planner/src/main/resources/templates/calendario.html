@@ -59,7 +59,8 @@
         <div class="nav-group">
             <ul class="nav-links primary-links">
                 <li><a th:href="@{/}">inicio</a></li>
-                <li><a href="#">historial</a></li>
+                <li><a th:href="@{/historial}">historial</a></li>
+                <li><a th:href="@{/kpi}">kpi</a></li>
             </ul>
             <ul class="nav-links secondary-links">
                 <li><a th:href="@{/equipos}">equipos</a></li>
@@ -351,10 +352,19 @@
             <p style="color: #9ca3af; font-size: 0.95rem; margin-bottom: 1.5rem;">Programación para <span th:text="${mesNombre} + ' ' + ${anio}" style="color: #cbd5e1; font-weight: 500;"></span></p>
             <div id="sidebar-equipos-container" style="display: flex; flex-direction: column; gap: 1rem; min-height: 100px;">
                 
-                <div th:each="equipo : ${equipos}" class="equipo-card" draggable="true" ondragstart="dragStart(event)" th:data-equipo-id="${equipo.id}" th:data-taller="${equipo.taller}" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; cursor: grab; transition: transform 0.2s, box-shadow 0.2s;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; align-items: center;">
-                        <span class="tag-badge" th:text="${equipo.tag}" style="background: rgba(59,130,246,0.15); color: #93c5fd; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8em; font-weight: 600;"></span>
-                        <span th:class="${equipo.criticidad != null && equipo.criticidad > 0 ? 'badge-critical' : 'badge-normal'}" th:text="${equipo.criticidad != null && equipo.criticidad > 0 ? 'Crítico (' + equipo.criticidad + ')' : 'Normal (' + (equipo.criticidad == null ? 0 : equipo.criticidad) + ')'}" th:style="${equipo.criticidad != null && equipo.criticidad > 0 ? 'font-size: 0.75rem; color: #fca5a5; background: rgba(239,68,68,0.15); padding: 0.2rem 0.5rem; border-radius: 4px;' : 'font-size: 0.75rem; color: #6ee7b7; background: rgba(52,211,153,0.15); padding: 0.2rem 0.5rem; border-radius: 4px;'}"></span>
+                <div th:each="equipo : ${equipos}" class="equipo-card" th:attr="draggable=${estado != 'FINALIZADO' ? 'true' : 'false'}, ondragstart=${estado != 'FINALIZADO' ? 'dragStart(event)' : null}" th:data-equipo-id="${equipo.id}" th:data-taller="${equipo.taller}" th:style="${estado != 'FINALIZADO' ? 'background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; cursor: grab; transition: transform 0.2s, box-shadow 0.2s; position: relative;' : 'background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; cursor: default; transition: transform 0.2s, box-shadow 0.2s; position: relative;'}">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; align-items: flex-start;">
+                        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <span class="tag-badge" th:text="${equipo.tag}" style="background: rgba(59,130,246,0.15); color: #93c5fd; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8em; font-weight: 600;"></span>
+                            <span th:class="${equipo.criticidad != null && equipo.criticidad > 0 ? 'badge-critical' : 'badge-normal'}" th:text="${equipo.criticidad != null && equipo.criticidad > 0 ? 'Crítico (' + equipo.criticidad + ')' : 'Normal (' + (equipo.criticidad == null ? 0 : equipo.criticidad) + ')'}" th:style="${equipo.criticidad != null && equipo.criticidad > 0 ? 'font-size: 0.75rem; color: #fca5a5; background: rgba(239,68,68,0.15); padding: 0.2rem 0.5rem; border-radius: 4px;' : 'font-size: 0.75rem; color: #6ee7b7; background: rgba(52,211,153,0.15); padding: 0.2rem 0.5rem; border-radius: 4px;'}"></span>
+                        </div>
+                        <div class="kebab-menu" style="position: relative; margin-left: 0.5rem;" th:if="${estado != 'FINALIZADO'}">
+                            <button type="button" th:onclick="'toggleCardMenu(event, ' + ${equipo.id} + ')'" style="background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 1.2rem; padding: 0 0.2rem; line-height: 1;">&#8942;</button>
+                            <div th:id="'menu-' + ${equipo.id}" class="card-dropdown" style="display: none; position: absolute; right: 0; top: 100%; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); overflow: hidden; min-width: 130px;">
+                                <button type="button" th:onclick="|event.preventDefault(); event.stopPropagation(); abrirReprogramarModal(${equipo.id})|" style="display: block; width: 100%; text-align: left; background: transparent; border: none; padding: 0.6rem 1rem; color: #f8fafc; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s; cursor: pointer;" onmouseover="this.style.background='rgba(59,130,246,0.2)'" onmouseout="this.style.background='transparent'">Reprogramar</button>
+                                <button type="button" th:onclick="|event.preventDefault(); event.stopPropagation(); cancelarEquipo(${equipo.id})|" style="display: block; width: 100%; text-align: left; background: transparent; border: none; padding: 0.6rem 1rem; color: #ef4444; font-size: 0.85rem; transition: background 0.2s; cursor: pointer;" onmouseover="this.style.background='rgba(239,68,68,0.2)'" onmouseout="this.style.background='transparent'">Cancelar</button>
+                            </div>
+                        </div>
                     </div>
                     <p style="color: #e5e7eb; font-size: 0.95rem; margin-bottom: 1rem; line-height: 1.4;" th:text="${equipo.descripcion}"></p>
                     <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #9ca3af;">
@@ -371,5 +381,103 @@
         </div>
         
     </div>
+    <!-- Modal Reprogramar -->
+    <div class="modal-overlay" id="reprogramarModal" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 style="margin-top: 0; color: #f8fafc; font-size: 1.25rem; font-weight: 600;">Reprogramar Equipo</h3>
+            <p style="color: #9ca3af; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">Seleccione la nueva fecha próxima para el mantenimiento.</p>
+            <input type="date" id="nuevaFechaInput" style="width: 100%; padding: 0.8rem; margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #f8fafc; outline: none; font-family: inherit;">
+            <input type="hidden" id="reprogramarEquipoId">
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" onclick="cerrarReprogramarModal()" style="padding: 0.6rem 1.2rem; background: #334155; color: white; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'">Cerrar</button>
+                <button type="button" onclick="guardarReprogramacion()" style="padding: 0.6rem 1.2rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Guardar Nueva Fecha</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleCardMenu(e, id) {
+            e.preventDefault();
+            e.stopPropagation();
+            // Close all other menus first
+            document.querySelectorAll('.card-dropdown').forEach(menu => {
+                if(menu.id !== 'menu-' + id) menu.style.display = 'none';
+            });
+            const menu = document.getElementById('menu-' + id);
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.kebab-menu')) {
+                document.querySelectorAll('.card-dropdown').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+            }
+        });
+
+        function cancelarEquipo(id) {
+            document.querySelectorAll('.card-dropdown').forEach(menu => menu.style.display = 'none');
+            if(confirm('¿Está seguro de que desea cancelar y desactivar este equipo?')) {
+                fetch('/equipos/cancelar/' + id, { method: 'POST' })
+                .then(response => {
+                    if(response.ok) {
+                        // Eliminar la tajeta del DOM
+                        const card = document.querySelector(`.equipo-card[data-equipo-id="${id}"]`);
+                        if(card) card.remove();
+                        
+                        // Eliminar de borrador (draft) si esta ahi
+                        draft = draft.filter(d => d.equipoId != id);
+                        localStorage.setItem(storageKey, JSON.stringify(draft));
+                    } else {
+                        alert('Error al cancelar el equipo.');
+                    }
+                })
+                .catch(err => alert('Error de red al cancelar.'));
+            }
+        }
+
+        function abrirReprogramarModal(id) {
+            document.querySelectorAll('.card-dropdown').forEach(menu => menu.style.display = 'none');
+            document.getElementById('reprogramarEquipoId').value = id;
+            document.getElementById('nuevaFechaInput').value = '';
+            const modal = document.getElementById('reprogramarModal');
+            modal.classList.add('active');
+        }
+
+        function cerrarReprogramarModal() {
+            document.getElementById('reprogramarModal').classList.remove('active');
+        }
+
+        function guardarReprogramacion() {
+            const id = document.getElementById('reprogramarEquipoId').value;
+            const fecha = document.getElementById('nuevaFechaInput').value;
+            if(!fecha) {
+                alert('Por favor seleccione una fecha.');
+                return;
+            }
+
+            fetch('/equipos/reprogramar/' + id, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ fecha: fecha })
+            })
+            .then(response => {
+                if(response.ok) {
+                    // Remover equipo de la vista principal si se reprogramó
+                    const card = document.querySelector(`.equipo-card[data-equipo-id="${id}"]`);
+                    if(card) card.remove();
+                    
+                    draft = draft.filter(d => d.equipoId != id);
+                    localStorage.setItem(storageKey, JSON.stringify(draft));
+                    
+                    cerrarReprogramarModal();
+                } else {
+                    alert('Error al reprogramar el equipo.');
+                }
+            })
+            .catch(err => alert('Error de red al reprogramar.'));
+        }
+    </script>
 </body>
 </html>
