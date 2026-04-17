@@ -106,6 +106,14 @@
         .stat-total { --stat-color: #3b82f6; } /* Blue */
         .stat-prev { --stat-color: #10b981; } /* Green */
         .stat-corr { --stat-color: #f59e0b; } /* Amber/Orange */
+        .stat-crit { --stat-color: #8b5cf6; } /* Purple for critical executed */
+        .stat-noejecutado { --stat-color: #ef4444; } /* Red */
+        .stat-noejecutado-normal { --stat-color: #f97316; } /* Orange */
+
+        .stat-card.active-filter {
+            box-shadow: 0 0 15px var(--stat-color);
+            border-color: var(--stat-color);
+        }
 
     </style>
 </head>
@@ -152,7 +160,7 @@
             <!-- Stats Row -->
             <div class="kpi-stats-grid">
                 
-                <div class="stat-card stat-prev">
+                <div class="stat-card stat-prev" onclick="filterTable('preventivo', this)" style="cursor: pointer;">
                     <div class="stat-content">
                         <div class="stat-title">Preventivos Realizados</div>
                         <div class="stat-value">
@@ -165,7 +173,7 @@
                     </div>
                 </div>
 
-                <div class="stat-card stat-corr">
+                <div class="stat-card stat-corr" onclick="filterTable('correctivo', this)" style="cursor: pointer;">
                     <div class="stat-content">
                         <div class="stat-title">Correctivos Realizados</div>
                         <div class="stat-value">
@@ -177,7 +185,49 @@
                     </div>
                 </div>
 
-                <div class="stat-card stat-total">
+                <div class="stat-card stat-crit" onclick="filterTable('critico', this)" style="cursor: pointer;">
+                    <div class="stat-content">
+                        <div class="stat-title">Críticos Ejecutados</div>
+                        <div class="stat-value">
+                            <span th:text="${ejecutadosCriticos}">0</span>
+                            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+                                <line x1="16" y1="8" x2="2" y2="22"></line>
+                                <line x1="17.5" y1="15" x2="9" y2="6.5"></line>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-noejecutado" onclick="filterTable('noejecutado', this)" style="cursor: pointer;">
+                    <div class="stat-content">
+                        <div class="stat-title">Críticos No Ejecutados</div>
+                        <div class="stat-value">
+                            <span th:text="${noEjecutadosCriticos}">0</span>
+                            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="15" y1="9" x2="9" y2="15"></line>
+                                <line x1="9" y1="9" x2="15" y2="15"></line>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-noejecutado-normal" onclick="filterTable('noejecutado-normal', this)" style="cursor: pointer;">
+                    <div class="stat-content">
+                        <div class="stat-title">Normales No Ejecutados</div>
+                        <div class="stat-value">
+                            <span th:text="${noEjecutadosNormales}">0</span>
+                            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="15" y1="9" x2="9" y2="15"></line>
+                                <line x1="9" y1="9" x2="15" y2="15"></line>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-total active-filter" onclick="filterTable('all', this)" style="cursor: pointer;">
                     <div class="stat-content">
                         <div class="stat-title">Total Intervenciones</div>
                         <div class="stat-value">
@@ -193,10 +243,10 @@
 
             </div>
 
-            <!-- Tabla de Equipos Críticos -->
+            <!-- Tabla de Equipos -->
             <div class="table-wrapper" style="margin-top: 1rem;">
                 <div class="table-header flex-header" style="margin-bottom: 1.5rem;">
-                    <h3 style="font-size: 1.4rem; font-weight: 500; color: #fca5a5;">Equipos Críticos Mantenidos</h3>
+                    <h3 id="tableTitle" style="font-size: 1.4rem; font-weight: 500; color: var(--text-light);">Todos los Equipos Intervenidos</h3>
                 </div>
                 
                 <div class="table-responsive">
@@ -206,22 +256,32 @@
                                 <th>Tag</th>
                                 <th>Descripción</th>
                                 <th>Taller</th>
-                                <th>Tipo</th>
+                                <th>Tipo / Estado</th>
                                 <th>Criticidad</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="equipo : ${equiposCriticos}">
-                                <td class="tag-cell"><span class="tag-badge" th:text="${equipo.tag}" style="border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; background: rgba(239, 68, 68, 0.1);"></span></td>
-                                <td class="desc-cell" th:text="${equipo.descripcion}"></td>
-                                <td class="taller-cell" th:text="${equipo.tallerNombre}"></td>
-                                <td th:text="${equipo.tipo == null ? 'Preventivo' : equipo.tipo}"></td>
+                            <tr th:each="detalle : ${detallesKpi}" class="equipo-kpi-row" 
+                                th:data-tipo="${(detalle.estado == 'NO_EJECUTADO' || detalle.estado == 'REPROGRAMADO') ? 'noejecutado' : (detalle.equipo.tipo == null ? 'preventivo' : detalle.equipo.tipo.toLowerCase())}">
+                                
+                                <td class="tag-cell">
+                                    <span class="tag-badge" th:text="${detalle.equipo.tag}" 
+                                          th:style="${detalle.equipo.criticidad != null && detalle.equipo.criticidad > 0 ? 'border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; background: rgba(239, 68, 68, 0.1);' : ''}"></span>
+                                </td>
+                                <td class="desc-cell" th:text="${detalle.equipo.descripcion}"></td>
+                                <td class="taller-cell" th:text="${detalle.equipo.tallerNombre}"></td>
                                 <td>
-                                    <span class="tag-badge badge-critical" th:text="'Crítico (' + ${equipo.criticidad} + ')'"></span>
+                                    <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                                        <span th:text="${detalle.equipo.tipo == null ? 'Preventivo' : (detalle.equipo.tipo.substring(0,1).toUpperCase() + detalle.equipo.tipo.substring(1).toLowerCase())}"></span>
+                                        <span th:if="${detalle.estado == 'NO_EJECUTADO' || detalle.estado == 'REPROGRAMADO'}" class="tag-badge badge-critical" style="background: rgba(239, 68, 68, 0.2); font-size: 0.65rem;" th:text="${detalle.estado == 'REPROGRAMADO' ? 'Reprogramado' : 'No Ejecutado'}"></span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span th:class="${detalle.equipo.criticidad != null && detalle.equipo.criticidad > 0 ? 'tag-badge badge-critical' : 'tag-badge badge-normal'}" th:text="${detalle.equipo.criticidad != null && detalle.equipo.criticidad > 0 ? 'Crítico (1)' : 'Normal (0)'}"></span>
                                 </td>
                             </tr>
-                            <tr th:if="${#lists.isEmpty(equiposCriticos)}">
-                                <td colspan="5" class="empty-state">No hay equipos críticos realizados en este mes.</td>
+                            <tr th:if="${#lists.isEmpty(detallesKpi)}" id="emptyStateRow">
+                                <td colspan="5" class="empty-state">No hay equipos registrados en este mes.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -231,5 +291,91 @@
         </div>
     </main>
 
+    <script>
+        function filterTable(filterType, clickedCard) {
+            // Update active state on cards
+            document.querySelectorAll('.stat-card').forEach(card => {
+                card.classList.remove('active-filter');
+            });
+            clickedCard.classList.add('active-filter');
+
+            // Update table title
+            const titleEl = document.getElementById('tableTitle');
+            if (filterType === 'all') {
+                titleEl.textContent = 'Todos los Equipos Intervenidos';
+                titleEl.style.color = 'var(--text-light)';
+            } else if (filterType === 'preventivo') {
+                titleEl.textContent = 'Equipos: Mantenimiento Preventivo';
+                titleEl.style.color = '#10b981';
+            } else if (filterType === 'correctivo') {
+                titleEl.textContent = 'Equipos: Mantenimiento Correctivo';
+                titleEl.style.color = '#f59e0b';
+            } else if (filterType === 'critico') {
+                titleEl.textContent = 'Equipos: Críticos Ejecutados';
+                titleEl.style.color = '#8b5cf6';
+            } else if (filterType === 'noejecutado') {
+                titleEl.textContent = 'Equipos Críticos No Ejecutados (Reprogramados)';
+                titleEl.style.color = '#ef4444';
+            } else if (filterType === 'noejecutado-normal') {
+                titleEl.textContent = 'Equipos Normales No Ejecutados (Reprogramados)';
+                titleEl.style.color = '#f97316';
+            }
+
+            // Filter rows
+            const rows = document.querySelectorAll('.equipo-kpi-row');
+            let visibleCount = 0;
+            rows.forEach(row => {
+                const rowType = row.getAttribute('data-tipo');
+                const badgeCritico = row.querySelector('.badge-critical');
+                let isCritical = badgeCritico && badgeCritico.textContent.includes('Crítico');
+                
+                if (filterType === 'all') {
+                    row.style.display = '';
+                    visibleCount++;
+                } else if (filterType === 'critico') {
+                    // Si el filtro es críticos ejecutados: tipo no es noejecutado y es crítico
+                    if (rowType !== 'noejecutado' && isCritical) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                } else if (filterType === 'noejecutado') {
+                    if (rowType === 'noejecutado' && isCritical) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                } else if (filterType === 'noejecutado-normal') {
+                    if (rowType === 'noejecutado' && (!isCritical)) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                } else {
+                    if (rowType === filterType) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+
+            // Handle empty state manually if none match the filter
+            let emptyState = document.getElementById('emptyStateRow');
+            if (!emptyState && visibleCount === 0) {
+                const tbody = document.querySelector('.equipos-table tbody');
+                emptyState = document.createElement('tr');
+                emptyState.id = 'emptyStateRow';
+                emptyState.innerHTML = '<td colspan="5" class="empty-state">No hay equipos para esta categoría.</td>';
+                tbody.appendChild(emptyState);
+            } else if (emptyState) {
+                emptyState.style.display = visibleCount === 0 ? '' : 'none';
+            }
+        }
+    </script>
 </body>
 </html>

@@ -86,21 +86,6 @@ public class EquipoController {
         return ResponseEntity.notFound().build();
     }
 
-    @PostMapping("/equipos/reprogramar/{id}")
-    public ResponseEntity<Void> reprogramarEquipoAjax(@PathVariable Long id, @RequestParam("fecha") String nuevaFecha) {
-        Equipo equipo = equipoRepository.findById(id).orElse(null);
-        if (equipo != null) {
-            try {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-                equipo.setFechaProxima(LocalDate.parse(nuevaFecha, formatter));
-                equipoRepository.save(equipo);
-                return ResponseEntity.ok().build();
-            } catch (Exception e) {
-                return ResponseEntity.badRequest().build();
-            }
-        }
-        return ResponseEntity.notFound().build();
-    }
 
     @GetMapping("/equipos/excel/template")
     public ResponseEntity<byte[]> descargarPlantilla() {

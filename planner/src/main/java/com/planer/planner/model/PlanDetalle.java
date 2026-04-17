@@ -23,6 +23,8 @@ public class PlanDetalle {
 
     private Integer dia;
 
+    private String estado = "EJECUTADO";
+
     public PlanDetalle() {}
 
     public PlanDetalle(PlanMensual planMensual, Equipo equipo, Integer dia) {
@@ -39,4 +41,6 @@ public class PlanDetalle {
     public void setEquipo(Equipo equipo) { this.equipo = equipo; }
     public Integer getDia() { return dia; }
     public void setDia(Integer dia) { this.dia = dia; }
+    public String getEstado() { return estado; }
+    public void setEstado(String estado) { this.estado = estado; }
 }

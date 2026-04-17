@@ -29,5 +29,16 @@ public class DataInitializer implements CommandLineRunner {
             adminRepository.save(admin);
             System.out.println("---- Usuario Admin creado correctamente (admin / admin123) ----");
         }
+
+        // Seed an initial superadmin user if it doesn't exist
+        if (adminRepository.findByUsername("superadmin").isEmpty()) {
+            Admin superadmin = new Admin(
+                    "superadmin",
+                    passwordEncoder.encode("superadmin123"),
+                    "ROLE_SUPERADMIN"
+            );
+            adminRepository.save(superadmin);
+            System.out.println("---- Usuario SuperAdmin creado correctamente (superadmin / superadmin123) ----");
+        }
     }
 }

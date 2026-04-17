@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel SuperAdmin - Usuarios</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+</head>
+<body>
+
+    <!-- Ambiente interactivo de fondo heredado del login -->
+    <div class="background-elements">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="grid-layer"></div>
+    </div>
+
+    <!-- Barra de Navegación -->
+    <nav class="navbar">
+        <div class="nav-group">
+            <ul class="nav-links primary-links">
+                <li><a href="#" class="active">Panel SuperAdmin</a></li>
+            </ul>
+        </div>
+        
+        <form th:action="@{/logout}" method="post" class="logout-form">
+            <button type="submit" class="logout-btn">Cerrar Sesión</button>
+        </form>
+    </nav>
+
+    <!-- Contenedor Principal (Tabla) -->
+    <main class="dashboard-container table-container">
+        <div class="table-wrapper">
+            <div class="table-header flex-header">
+                <h2>Directorio de Administradores</h2>
+                <div class="header-controls">
+                    <div class="search-wrapper">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input type="text" id="searchInput" class="search-input" placeholder="Buscar usuario...">
+                    </div>
+                    <button class="add-btn" onclick="openModal()">+ Nuevo Usuario</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="equipos-table" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuario</th>
+                            <th>Rol</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="admin : ${admins}" class="user-row">
+                            <td th:text="${admin.id}"></td>
+                            <td class="tag-cell"><span class="tag-badge" th:text="${admin.username}"></span></td>
+                            <td><span th:class="${admin.role == 'ROLE_SUPERADMIN' ? 'tag-badge badge-critical' : 'tag-badge badge-normal'}" th:text="${admin.role == 'ROLE_SUPERADMIN' ? 'SuperAdmin' : 'Admin'}"></span></td>
+                            <td class="actions-cell">
+                                <div class="action-buttons">
+                                    <button class="edit-btn" 
+                                            th:data-id="${admin.id}"
+                                            th:data-username="${admin.username}"
+                                            th:data-role="${admin.role}"
+                                            onclick="openModal(this)">
+                                        Editar
+                                    </button>
+                                    <form th:action="@{/superadmin/usuarios/eliminar}" method="post" style="display:inline;" onsubmit="return confirm('¿Estás seguro de eliminar a este usuario?');">
+                                        <input type="hidden" name="id" th:value="${admin.id}">
+                                        <button type="submit" class="toggle-status-btn btn-deactivate" th:if="${admin.username != 'superadmin'}">Eliminar</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Form for Create/Edit -->
+    <div class="modal-overlay" id="userModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Nuevo Usuario</h3>
+                <button class="close-modal" onclick="closeModal()">×</button>
+            </div>
+            <!-- El form cambiará de action según si es crear o editar -->
+            <form id="userForm" method="post">
+                <input type="hidden" name="id" id="userId">
+                
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Nombre de Usuario</label>
+                        <input type="text" name="username" id="usernameInput" class="modal-input" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Contraseña</label>
+                        <input type="password" name="password" id="passwordInput" class="modal-input" placeholder="***">
+                        <small id="passwordHelp" style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.2rem; display: none;">Dejar en blanco para no cambiarla</small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Rol</label>
+                        <select name="role" id="roleInput" class="modal-input" required>
+                            <option value="ROLE_ADMIN">Admin (Planificador)</option>
+                            <option value="ROLE_SUPERADMIN">SuperAdmin (Gestión de Usuarios)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script para Modal y Búsqueda Frontend -->
+    <script>
+        // Modal logic
+        function openModal(btnEl = null) {
+            const modal = document.getElementById('userModal');
+            const form = document.getElementById('userForm');
+            const title = document.getElementById('modalTitle');
+            const passHelp = document.getElementById('passwordHelp');
+            const passInput = document.getElementById('passwordInput');
+            
+            if (btnEl) {
+                // Modo Edición
+                title.textContent = 'Editar Usuario';
+                form.action = '/superadmin/usuarios/editar';
+                document.getElementById('userId').value = btnEl.getAttribute('data-id');
+                document.getElementById('usernameInput').value = btnEl.getAttribute('data-username');
+                document.getElementById('roleInput').value = btnEl.getAttribute('data-role');
+                passInput.removeAttribute('required');
+                passInput.value = ''; // clean old value
+                passInput.placeholder = 'Dejar vacío si no se cambia';
+                passHelp.style.display = 'block';
+            } else {
+                // Modo Creación
+                title.textContent = 'Nuevo Usuario';
+                form.action = '/superadmin/usuarios';
+                form.reset();
+                document.getElementById('userId').value = '';
+                passInput.setAttribute('required', 'required');
+                passInput.placeholder = 'Contraseña nueva';
+                passHelp.style.display = 'none';
+            }
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').classList.remove('active');
+        }
+
+        // Cache Search Strings for peak performance (O(1) lookup during typing)
+        window.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.user-row').forEach(row => {
+                const textData = Array.from(row.querySelectorAll('td'))
+                    .map(td => td.innerText.toLowerCase())
+                    .join(' ');
+                row.setAttribute('data-search-cache', textData);
+            });
+        });
+
+        // Search logic (Optimized Client-side fast filtering)
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('.user-row');
+            
+            rows.forEach(row => {
+                const cache = row.getAttribute('data-search-cache');
+                if (cache && cache.includes(term)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

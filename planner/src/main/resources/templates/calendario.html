@@ -239,10 +239,17 @@
         const yearBase = document.querySelector('input[name="year"]') ? document.querySelector('input[name="year"]').value : '0';
         const monthBase = document.querySelector('input[name="month"]') ? document.querySelector('input[name="month"]').value : '0';
         const planIdBase = document.querySelector('input[name="id"]') ? document.querySelector('input[name="id"]').value : '0';
+        
         // Llave única por ID de plan o en defecto por año y mes
         let storageKey = 'planner_draft_';
-        if (planIdBase !== '0' && planIdBase !== '') storageKey += 'planId_' + planIdBase;
-        else storageKey += yearBase + '_' + monthBase;
+        if (planIdBase !== '0' && planIdBase !== '') {
+            storageKey += 'planId_' + planIdBase;
+        } else {
+            storageKey += yearBase + '_' + monthBase;
+            // Limpia el localStorage si entramos por primera vez a un mes nuevo sin guardar
+            // Esto soluciona que aparezcan "ya cargados en el mes" debido a borradores antiguos invisibles.
+            localStorage.removeItem(storageKey);
+        }
 
         let dbDraft = [];
         /*[# th:each="det : ${detallesGuardados}"]*/
@@ -457,10 +464,13 @@
                 return;
             }
 
-            fetch('/equipos/reprogramar/' + id, { 
+            const planId = document.querySelector('input[name="id"]') ? document.querySelector('input[name="id"]').value : '0';
+            const year = document.querySelector('input[name="year"]') ? document.querySelector('input[name="year"]').value : '0';
+            const month = document.querySelector('input[name="month"]') ? document.querySelector('input[name="month"]').value : '0';
+
+            fetch(`/calendario/reprogramar/${id}?fecha=${fecha}&planId=${planId}&year=${year}&month=${month}`, { 
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ fecha: fecha })
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
             })
             .then(response => {
                 if(response.ok) {

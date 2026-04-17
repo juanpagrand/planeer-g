@@ -9,13 +9,16 @@ import com.planer.planner.repository.PlanMensualRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.TextStyle;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -179,7 +182,11 @@ public class ProgramacionController {
                 java.util.regex.Matcher m = p.matcher(stripped);
 
                 List<PlanDetalle> prevs = planDetalleRepository.findByPlanMensual(plan);
-                planDetalleRepository.deleteAll(prevs);
+                // Solo borrar los previos que hayan sido EJECUTADOS. Respetar los REPROGRAMADOS
+                List<PlanDetalle> paraBorrar = prevs.stream()
+                    .filter(pd -> "EJECUTADO".equals(pd.getEstado()) || pd.getEstado() == null)
+                    .toList();
+                planDetalleRepository.deleteAll(paraBorrar);
 
                 while (m.find()) {
                     Long eqId = Long.parseLong(m.group(1));
@@ -198,7 +205,14 @@ public class ProgramacionController {
                         }
 
                         if (valid) {
+                            // Por seguridad, si de alguna forma se reprogramó antes pero ahora sí se arrastra:
+                            List<PlanDetalle> huerfanos = planDetalleRepository.findByPlanMensual(plan).stream()
+                                    .filter(d -> d.getEquipo().getId().equals(eq.getId()))
+                                    .toList();
+                            planDetalleRepository.deleteAll(huerfanos);
+
                             PlanDetalle det = new PlanDetalle(plan, eq, dia);
+                            det.setEstado("EJECUTADO");
                             planDetalleRepository.save(det);
                         }
                     }
@@ -220,7 +234,40 @@ public class ProgramacionController {
             planMensualRepository.save(plan);
 
             List<PlanDetalle> detalles = planDetalleRepository.findByPlanMensual(plan);
+            
+            // Register remaining equipments that were supposed to be done but weren't
+            List<Long> equiposGuardadosIds = detalles.stream().map(d -> d.getEquipo().getId()).toList();
+            List<Equipo> allEquipos = equipoRepository.findAll();
+            for (Equipo eq : allEquipos) {
+                if (Boolean.TRUE.equals(eq.getActivo()) && "preventivo".equalsIgnoreCase(eq.getTipo()) && !equiposGuardadosIds.contains(eq.getId())) {
+                    if (eq.getFechaProxima() != null && eq.getFechaProxima().getYear() == plan.getAnio() && eq.getFechaProxima().getMonthValue() == plan.getMes()) {
+                        PlanDetalle noEjecutado = new PlanDetalle(plan, eq, null);
+                        noEjecutado.setEstado("NO_EJECUTADO");
+                        planDetalleRepository.save(noEjecutado);
+                        detalles.add(noEjecutado); 
+                    }
+                }
+            }
+
             for (PlanDetalle det : detalles) {
+                if ("NO_EJECUTADO".equals(det.getEstado()) || "REPROGRAMADO".equals(det.getEstado())) {
+                    // Si ya se reprogramó explícitamente desde el botón, la fecha ya avanzó; 
+                    // Si no se reprogramó pero no se ejecutó, asume que avanzó un mes por defecto?
+                    // El usuario indica: "y si lo reprograman queda como no echo", 
+                    // a nivel de fecha lo auto calcularemos si no se hizo.
+                    if ("NO_EJECUTADO".equals(det.getEstado())) {
+                        Equipo eq = det.getEquipo();
+                        String crit = eq.getCriterioProgramacion();
+                        if (crit != null && !crit.trim().isEmpty()) {
+                            LocalDate baseDate = LocalDate.of(plan.getAnio(), plan.getMes(), 1);
+                            LocalDate nextDate = calcularSiguienteFecha(baseDate, crit);
+                            eq.setFechaProxima(nextDate);
+                            equipoRepository.save(eq);
+                        }
+                    }
+                    continue; // skip the next auto-calc for reprogramados/no_ejecutados
+                }
+
                 Equipo eq = det.getEquipo();
                 
                 if ("correctivo".equalsIgnoreCase(eq.getTipo())) {
@@ -298,5 +345,52 @@ public class ProgramacionController {
         // Default si no se interpreta la palabra exacta, asume suma del número en meses
         // (o 1 mes)
         return baseDate.plusMonths(num > 0 ? num : 1);
+    }
+
+    @PostMapping("/calendario/reprogramar/{id}")
+    public ResponseEntity<Void> reprogramarEquipoAjax(
+            @PathVariable Long id, 
+            @RequestParam("fecha") String nuevaFecha, 
+            @RequestParam(value = "planId", required = false, defaultValue = "0") Long planId,
+            @RequestParam(value = "year", required = false, defaultValue = "0") Integer year,
+            @RequestParam(value = "month", required = false, defaultValue = "0") Integer month) {
+        Equipo equipo = equipoRepository.findById(id).orElse(null);
+        if (equipo != null) {
+            try {
+                PlanMensual plan = null;
+                
+                // Si reprogramamos y había un plan activo, vinculamos esto al plan
+                if (planId > 0) {
+                    plan = planMensualRepository.findById(planId).orElse(null);
+                } else if (year > 0 && month > 0) {
+                     List<PlanMensual> existentes = planMensualRepository.findByAnioAndMes(year, month);
+                     if (!existentes.isEmpty()) {
+                         plan = existentes.get(0);
+                     } else {
+                         plan = new PlanMensual(year, month, "ACTIVO");
+                         plan = planMensualRepository.save(plan);
+                     }
+                }
+                
+                if (plan != null) {
+                    List<PlanDetalle> existentes = planDetalleRepository.findByPlanMensual(plan);
+                    boolean yaRegistrado = existentes.stream().anyMatch(d -> d.getEquipo().getId().equals(equipo.getId()));
+                    
+                    if (!yaRegistrado) {
+                        PlanDetalle reprogramado = new PlanDetalle(plan, equipo, null);
+                        reprogramado.setEstado("REPROGRAMADO");
+                        planDetalleRepository.save(reprogramado);
+                    }
+                }
+
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                equipo.setFechaProxima(LocalDate.parse(nuevaFecha, formatter));
+                equipoRepository.save(equipo);
+                return ResponseEntity.ok().build();
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().build();
+            }
+        }
+        return ResponseEntity.notFound().build();
     }
 }

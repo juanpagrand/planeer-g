@@ -56,6 +56,7 @@ public class KpiController {
         List<PlanDetalle> detalles = planDetalleRepository.findByPlanMensual(plan);
         
         long preventivosRealizados = detalles.stream()
+                .filter(d -> !"REPROGRAMADO".equals(d.getEstado()) && !"NO_EJECUTADO".equals(d.getEstado()))
                 .filter(d -> {
                     String tipo = d.getEquipo().getTipo();
                     return tipo == null || !tipo.equalsIgnoreCase("correctivo");
@@ -63,25 +64,52 @@ public class KpiController {
                 .count();
 
         long correctivosRealizados = detalles.stream()
+                .filter(d -> !"REPROGRAMADO".equals(d.getEstado()) && !"NO_EJECUTADO".equals(d.getEstado()))
                 .filter(d -> {
                     String tipo = d.getEquipo().getTipo();
                     return tipo != null && tipo.equalsIgnoreCase("correctivo");
                 })
                 .count();
 
-        List<Equipo> equiposCriticos = detalles.stream()
-            .map(PlanDetalle::getEquipo)
-            .filter(e -> e.getCriticidad() != null && e.getCriticidad() > 0)
-            // Para eliminar posibles duplicados si algun equipo estuvo varias veces en el mes
-            .distinct()
+        long noEjecutadosCriticos = detalles.stream()
+                .filter(d -> "REPROGRAMADO".equals(d.getEstado()) || "NO_EJECUTADO".equals(d.getEstado()))
+                .filter(d -> d.getEquipo().getCriticidad() != null && d.getEquipo().getCriticidad() > 0)
+                .count();
+
+        long ejecutadosCriticos = detalles.stream()
+                .filter(d -> !"REPROGRAMADO".equals(d.getEstado()) && !"NO_EJECUTADO".equals(d.getEstado()))
+                .filter(d -> d.getEquipo().getCriticidad() != null && d.getEquipo().getCriticidad() > 0)
+                .count();
+
+        long noEjecutadosNormales = detalles.stream()
+                .filter(d -> "REPROGRAMADO".equals(d.getEstado()) || "NO_EJECUTADO".equals(d.getEstado()))
+                .filter(d -> d.getEquipo().getCriticidad() == null || d.getEquipo().getCriticidad() == 0)
+                .count();
+
+        // Total excludes NO_EJECUTADO and REPROGRAMADO
+        long totalRealizados = detalles.stream().filter(d -> !"REPROGRAMADO".equals(d.getEstado()) && !"NO_EJECUTADO".equals(d.getEstado())).count();
+
+        // Para equipos mantenidos (ejecutados + no ejecutados) podemos pasarlos todos y la vista los diferenciará
+        List<PlanDetalle> detallesKpi = detalles.stream()
+            // Filtramos para obtener un detalle por equipo (distinct by equipoId)
+            .collect(Collectors.toMap(
+                d -> d.getEquipo().getId(), 
+                d -> d, 
+                (existing, replacement) -> existing // si hay colisión, mantiene el primero
+            ))
+            .values()
+            .stream()
             .collect(Collectors.toList());
 
         model.addAttribute("mesFormateado", formatearMes(plan.getAnio(), plan.getMes()));
         model.addAttribute("plan", plan);
-        model.addAttribute("totalRealizados", detalles.size());
+        model.addAttribute("totalRealizados", totalRealizados);
         model.addAttribute("preventivosRealizados", preventivosRealizados);
         model.addAttribute("correctivosRealizados", correctivosRealizados);
-        model.addAttribute("equiposCriticos", equiposCriticos);
+        model.addAttribute("ejecutadosCriticos", ejecutadosCriticos);
+        model.addAttribute("noEjecutadosCriticos", noEjecutadosCriticos);
+        model.addAttribute("noEjecutadosNormales", noEjecutadosNormales);
+        model.addAttribute("detallesKpi", detallesKpi);
 
         return "kpi-detalle";
     }
