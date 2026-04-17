@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listado de Mantenimiento</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+    <style>
+        .order-input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #334155;
+            color: #f8fafc;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .order-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: rgba(15, 23, 42, 0.9);
+        }
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .toast-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="background-elements">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="grid-layer"></div>
+    </div>
+
+    <!-- Navegación -->
+    <nav class="navbar">
+        <div class="nav-group">
+            <ul class="nav-links primary-links">
+                <li><a th:href="@{/}">inicio</a></li>
+                <li><a th:href="@{/historial}">historial</a></li>
+                <li><a th:href="@{/kpi}">kpi</a></li>
+            </ul>
+            <ul class="nav-links secondary-links">
+                <li><a th:href="@{/equipos}">equipos</a></li>
+                <li><a th:href="@{/correctivos}">correctivos</a></li>
+            </ul>
+        </div>
+        
+        <form th:action="@{/logout}" method="post" class="logout-form">
+            <button type="submit" class="logout-btn">Cerrar Sesión</button>
+        </form>
+    </nav>
+
+    <main class="dashboard-container table-container">
+        <div class="table-wrapper">
+            <div class="table-header flex-header">
+                <div>
+                    <h2>Listado de Mantenimiento</h2>
+                    <p style="color: #9ca3af; font-size: 0.95rem; margin-top: 0.3rem;" th:text="${mesNombre} + ' ' + ${plan.anio}"></p>
+                </div>
+                
+                <div class="header-controls" style="align-items: center;">
+                    <div style="background: rgba(30, 41, 59, 0.5); padding: 0.3rem 0.8rem; border-radius: 8px; border: 1px solid #334155; display:flex; align-items: center; gap: 0.5rem;">
+                        <label style="color: #94a3b8; font-size: 0.85rem;">Taller:</label>
+                        <select onchange="cambiarTaller(this.value)" style="background: transparent; color: #f8fafc; border: none; outline: none; font-family: 'Inter', sans-serif; cursor: pointer;">
+                            <option value="Todos" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Todos'}">Todos</option>
+                            <option value="Mecanico" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Mecanico'}">Mecánico</option>
+                            <option value="Instrumentista" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Instrumentista'}">Instrumentista</option>
+                            <option value="Pintor" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Pintor'}">Pintor</option>
+                            <option value="Civil" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Civil'}">Civil</option>
+                            <option value="Electricista" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Electricista'}">Electricista</option>
+                        </select>
+                    </div>
+
+                    <a th:href="@{/calendario(id=${plan.id})}" class="add-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; background: #475569;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        Volver al Calendario
+                    </a>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="equipos-table">
+                    <thead>
+                        <tr>
+                            <th>Día Programado</th>
+                            <th>Tag</th>
+                            <th>Descripción</th>
+                            <th>Taller</th>
+                            <th>Duración</th>
+                            <th>N° de Orden</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="det : ${asignaciones}">
+                            <td style="font-weight: 600; color: #e2e8f0; text-align: center;" th:text="${det.dia}"></td>
+                            <td><span class="tag-badge" style="background: rgba(59,130,246,0.15); color: #93c5fd;" th:text="${det.equipo.tag}"></span></td>
+                            <td class="desc-cell" th:text="${det.equipo.descripcion}"></td>
+                            <td th:text="${det.equipo.tallerNombre}"></td>
+                            <td th:text="${det.equipo.duracion} + 'h'"></td>
+                            <td style="width: 180px;">
+                                <input type="text" class="order-input" 
+                                       placeholder="N° de orden..." 
+                                       th:value="${det.numeroOrden}" 
+                                       th:attr="data-id=${det.id}" 
+                                       onblur="guardarOrden(this)">
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(asignaciones)}">
+                            <td colspan="6" class="empty-state">No hay equipos asignados a este taller en la programación actual.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast" class="toast-notification">Orden guardada</div>
+    
+    <script th:inline="javascript">
+        const planId = /*[[${plan.id}]]*/ 0;
+        
+        function cambiarTaller(taller) {
+            window.location.href = '/calendario/listado?id=' + planId + '&taller=' + taller;
+        }
+
+        function guardarOrden(inputEl) {
+            const idDetalle = inputEl.getAttribute('data-id');
+            const valor = inputEl.value;
+
+            const formData = new URLSearchParams();
+            formData.append('detalleId', idDetalle);
+            formData.append('numeroOrden', valor);
+
+            fetch('/calendario/actualizar-orden', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: formData.toString()
+            })
+            .then(response => {
+                if(response.ok) {
+                    mostrarToast("N° de Orden guardado");
+                    inputEl.style.borderColor = '#10b981';
+                    setTimeout(() => {
+                        inputEl.style.borderColor = '#334155';
+                    }, 2000);
+                } else {
+                    mostrarToast("Error al guardar", true);
+                    inputEl.style.borderColor = '#ef4444';
+                }
+            })
+            .catch(error => {
+                mostrarToast("Error de conexión", true);
+                inputEl.style.borderColor = '#ef4444';
+            });
+        }
+
+        function mostrarToast(mensaje, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = mensaje;
+            toast.style.background = isError ? '#ef4444' : '#10b981';
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Comparator;
 
 @Controller
 public class ProgramacionController {
@@ -213,6 +214,13 @@ public class ProgramacionController {
 
                             PlanDetalle det = new PlanDetalle(plan, eq, dia);
                             det.setEstado("EJECUTADO");
+                            
+                            // Preservar numeroOrden
+                            Optional<PlanDetalle> detPrevio = prevs.stream().filter(pd -> pd.getEquipo().getId().equals(eq.getId())).findFirst();
+                            if (detPrevio.isPresent()) {
+                                det.setNumeroOrden(detPrevio.get().getNumeroOrden());
+                            }
+                            
                             planDetalleRepository.save(det);
                         }
                     }
@@ -392,5 +400,57 @@ public class ProgramacionController {
             }
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/calendario/listado")
+    public String verListado(
+            @RequestParam("id") Long id, 
+            @RequestParam(value = "taller", required = false) String taller,
+            Model model) {
+        Optional<PlanMensual> planOpt = planMensualRepository.findById(id);
+        if (!planOpt.isPresent()) return "redirect:/";
+
+        PlanMensual plan = planOpt.get();
+        List<PlanDetalle> detalles = planDetalleRepository.findByPlanMensual(plan);
+        
+        if (taller == null) taller = "Todos";
+        final String expectedTaller = taller;
+        
+        List<PlanDetalle> asignados = detalles.stream()
+            .filter(d -> "EJECUTADO".equals(d.getEstado()) || d.getEstado() == null)
+            .filter(d -> {
+                if ("Todos".equals(expectedTaller)) return true;
+                String t = d.getEquipo().getTaller();
+                if (t == null) return false;
+                return t.equalsIgnoreCase(expectedTaller) || 
+                       t.toUpperCase().equals(expectedTaller.substring(0, 1).toUpperCase());
+            })
+            .sorted(Comparator.comparing(d -> d.getDia() != null ? d.getDia() : 0))
+            .toList();
+
+        YearMonth yearMonth = YearMonth.of(plan.getAnio(), plan.getMes());
+        String mesNombre = yearMonth.getMonth().getDisplayName(TextStyle.FULL, new Locale("es", "ES"));
+        mesNombre = mesNombre.substring(0, 1).toUpperCase() + mesNombre.substring(1);
+
+        model.addAttribute("plan", plan);
+        model.addAttribute("mesNombre", mesNombre);
+        model.addAttribute("asignaciones", asignados);
+        model.addAttribute("tallerNavegacion", taller);
+        
+        return "listado-calendario";
+    }
+
+    @PostMapping("/calendario/actualizar-orden")
+    public ResponseEntity<Void> actualizarOrden(
+            @RequestParam("detalleId") Long detalleId, 
+            @RequestParam("numeroOrden") String numeroOrden) {
+        Optional<PlanDetalle> detOpt = planDetalleRepository.findById(detalleId);
+        if (detOpt.isPresent()) {
+            PlanDetalle det = detOpt.get();
+            det.setNumeroOrden(numeroOrden);
+            planDetalleRepository.save(det);
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.badRequest().build();
     }
 }
