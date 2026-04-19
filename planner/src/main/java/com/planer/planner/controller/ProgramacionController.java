@@ -113,7 +113,7 @@ public class ProgramacionController {
         final int filterMonth = m;
         final String expectedTaller = taller;
         final boolean isFinalizado = "FINALIZADO".equals(estadoActual);
-        final List<Long> equiposGuardadosIds = detalles.stream().map(d -> d.getEquipo().getId()).toList();
+        final java.util.Set<Long> equiposGuardadosIds = detalles.stream().map(d -> d.getEquipo().getId()).collect(java.util.stream.Collectors.toSet());
 
         List<Equipo> equipos = equipoRepository.findAll().stream()
                 .filter(e -> {
@@ -189,12 +189,26 @@ public class ProgramacionController {
                     .toList();
                 planDetalleRepository.deleteAll(paraBorrar);
 
+                List<Long> eqIdsList = new ArrayList<>();
+                List<Integer> eqDiasList = new ArrayList<>();
                 while (m.find()) {
-                    Long eqId = Long.parseLong(m.group(1));
-                    Integer dia = Integer.parseInt(m.group(2));
-                    Optional<Equipo> eqOpt = equipoRepository.findById(eqId);
-                    if (eqOpt.isPresent()) {
-                        Equipo eq = eqOpt.get();
+                    eqIdsList.add(Long.parseLong(m.group(1)));
+                    eqDiasList.add(Integer.parseInt(m.group(2)));
+                }
+
+                // Obtencion en lote (Batch Fetch)
+                List<Equipo> fetchEquipos = equipoRepository.findAllById(eqIdsList);
+                java.util.Map<Long, Equipo> equiposMap = fetchEquipos.stream().collect(java.util.stream.Collectors.toMap(Equipo::getId, e -> e));
+
+                List<PlanDetalle> paraGuardar = new ArrayList<>();
+                List<PlanDetalle> paraBorrarHuerfanos = new ArrayList<>();
+
+                for (int i = 0; i < eqIdsList.size(); i++) {
+                    Long eqId = eqIdsList.get(i);
+                    Integer dia = eqDiasList.get(i);
+                    Equipo eq = equiposMap.get(eqId);
+                    
+                    if (eq != null) {
                         boolean valid = false;
 
                         if (prevs.stream().anyMatch(pd -> pd.getEquipo().getId().equals(eq.getId()))) {
@@ -206,25 +220,26 @@ public class ProgramacionController {
                         }
 
                         if (valid) {
-                            // Por seguridad, si de alguna forma se reprogramó antes pero ahora sí se arrastra:
                             List<PlanDetalle> huerfanos = planDetalleRepository.findByPlanMensual(plan).stream()
                                     .filter(d -> d.getEquipo().getId().equals(eq.getId()))
                                     .toList();
-                            planDetalleRepository.deleteAll(huerfanos);
+                            paraBorrarHuerfanos.addAll(huerfanos);
 
                             PlanDetalle det = new PlanDetalle(plan, eq, dia);
                             det.setEstado("EJECUTADO");
                             
-                            // Preservar numeroOrden
                             Optional<PlanDetalle> detPrevio = prevs.stream().filter(pd -> pd.getEquipo().getId().equals(eq.getId())).findFirst();
                             if (detPrevio.isPresent()) {
                                 det.setNumeroOrden(detPrevio.get().getNumeroOrden());
                             }
                             
-                            planDetalleRepository.save(det);
+                            paraGuardar.add(det);
                         }
                     }
                 }
+                
+                if (!paraBorrarHuerfanos.isEmpty()) planDetalleRepository.deleteAll(paraBorrarHuerfanos);
+                if (!paraGuardar.isEmpty()) planDetalleRepository.saveAll(paraGuardar);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -244,19 +259,25 @@ public class ProgramacionController {
             List<PlanDetalle> detalles = planDetalleRepository.findByPlanMensual(plan);
             
             // Register remaining equipments that were supposed to be done but weren't
-            List<Long> equiposGuardadosIds = detalles.stream().map(d -> d.getEquipo().getId()).toList();
+            java.util.Set<Long> equiposGuardadosIds = detalles.stream().map(d -> d.getEquipo().getId()).collect(java.util.stream.Collectors.toSet());
             List<Equipo> allEquipos = equipoRepository.findAll();
+            
+            List<PlanDetalle> noEjecutadosBatch = new ArrayList<>();
             for (Equipo eq : allEquipos) {
                 if (Boolean.TRUE.equals(eq.getActivo()) && "preventivo".equalsIgnoreCase(eq.getTipo()) && !equiposGuardadosIds.contains(eq.getId())) {
                     if (eq.getFechaProxima() != null && eq.getFechaProxima().getYear() == plan.getAnio() && eq.getFechaProxima().getMonthValue() == plan.getMes()) {
                         PlanDetalle noEjecutado = new PlanDetalle(plan, eq, null);
                         noEjecutado.setEstado("NO_EJECUTADO");
-                        planDetalleRepository.save(noEjecutado);
+                        noEjecutadosBatch.add(noEjecutado);
                         detalles.add(noEjecutado); 
                     }
                 }
             }
+            if(!noEjecutadosBatch.isEmpty()) {
+                planDetalleRepository.saveAll(noEjecutadosBatch);
+            }
 
+            List<Equipo> equiposToSave = new ArrayList<>();
             for (PlanDetalle det : detalles) {
                 if ("NO_EJECUTADO".equals(det.getEstado()) || "REPROGRAMADO".equals(det.getEstado())) {
                     // Si ya se reprogramó explícitamente desde el botón, la fecha ya avanzó; 
@@ -270,7 +291,7 @@ public class ProgramacionController {
                             LocalDate baseDate = LocalDate.of(plan.getAnio(), plan.getMes(), 1);
                             LocalDate nextDate = calcularSiguienteFecha(baseDate, crit);
                             eq.setFechaProxima(nextDate);
-                            equipoRepository.save(eq);
+                            equiposToSave.add(eq);
                         }
                     }
                     continue; // skip the next auto-calc for reprogramados/no_ejecutados
@@ -280,7 +301,7 @@ public class ProgramacionController {
                 
                 if ("correctivo".equalsIgnoreCase(eq.getTipo())) {
                     eq.setActivo(false);
-                    equipoRepository.save(eq);
+                    equiposToSave.add(eq);
                     continue;
                 }
                 
@@ -300,11 +321,14 @@ public class ProgramacionController {
                         LocalDate baseDate = LocalDate.of(plan.getAnio(), plan.getMes(), diaOriginal);
                         LocalDate nextDate = calcularSiguienteFecha(baseDate, crit);
                         eq.setFechaProxima(nextDate);
-                        equipoRepository.save(eq);
+                        equiposToSave.add(eq);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
+            }
+            if(!equiposToSave.isEmpty()) {
+                equipoRepository.saveAll(equiposToSave);
             }
         }
         return "redirect:/historial";
@@ -432,10 +456,15 @@ public class ProgramacionController {
         String mesNombre = yearMonth.getMonth().getDisplayName(TextStyle.FULL, new Locale("es", "ES"));
         mesNombre = mesNombre.substring(0, 1).toUpperCase() + mesNombre.substring(1);
 
+        int diaSemanaInicio = yearMonth.atDay(1).getDayOfWeek().getValue();
+        int totalDias = yearMonth.lengthOfMonth();
+
         model.addAttribute("plan", plan);
         model.addAttribute("mesNombre", mesNombre);
         model.addAttribute("asignaciones", asignados);
         model.addAttribute("tallerNavegacion", taller);
+        model.addAttribute("diaSemanaInicio", diaSemanaInicio);
+        model.addAttribute("totalDias", totalDias);
         
         return "listado-calendario";
     }

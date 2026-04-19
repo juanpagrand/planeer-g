@@ -41,6 +41,7 @@
             opacity: 1;
             transform: translateY(0);
         }
+        
     </style>
 </head>
 <body>
@@ -71,23 +72,39 @@
 
     <main class="dashboard-container table-container">
         <div class="table-wrapper">
-            <div class="table-header flex-header">
+            <div class="table-header flex-header" style="flex-wrap: wrap;">
                 <div>
                     <h2>Listado de Mantenimiento</h2>
                     <p style="color: #9ca3af; font-size: 0.95rem; margin-top: 0.3rem;" th:text="${mesNombre} + ' ' + ${plan.anio}"></p>
                 </div>
                 
-                <div class="header-controls" style="align-items: center;">
-                    <div style="background: rgba(30, 41, 59, 0.5); padding: 0.3rem 0.8rem; border-radius: 8px; border: 1px solid #334155; display:flex; align-items: center; gap: 0.5rem;">
-                        <label style="color: #94a3b8; font-size: 0.85rem;">Taller:</label>
-                        <select onchange="cambiarTaller(this.value)" style="background: transparent; color: #f8fafc; border: none; outline: none; font-family: 'Inter', sans-serif; cursor: pointer;">
-                            <option value="Todos" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Todos'}">Todos</option>
-                            <option value="Mecanico" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Mecanico'}">Mecánico</option>
-                            <option value="Instrumentista" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Instrumentista'}">Instrumentista</option>
-                            <option value="Pintor" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Pintor'}">Pintor</option>
-                            <option value="Civil" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Civil'}">Civil</option>
-                            <option value="Electricista" style="background: #1e293b;" th:selected="${tallerNavegacion == 'Electricista'}">Electricista</option>
-                        </select>
+                <div class="header-controls" style="align-items: center; gap: 1rem;">
+                    
+                    <!-- Menú de Taller igual al de Calendario -->
+                    <div class="taller-dropdown-container" style="position: relative;">
+                        <button class="view-btn dropdown-toggle" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.3); color: #93c5fd; display: flex; align-items: center; gap: 0.5rem;" onclick="toggleTallerMenu(event)">
+                            <span th:text="${tallerNavegacion == 'Todos' ? 'Taller' : tallerNavegacion}">Taller</span>
+                            <span style="font-size: 0.8em;">▼</span>
+                        </button>
+                        <div class="taller-menu" id="tallerMenu" style="display: none; position: absolute; top: calc(100% + 5px); left: 0; background: var(--bg-card); border: 1px solid var(--border-color); box-shadow: 0 5px 25px rgba(0,0,0,0.8); border-radius: 8px; z-index: 100; min-width: 160px; flex-direction: column; overflow: hidden; backdrop-filter: blur(15px); padding: 0.4rem; gap: 0.2rem;">
+                            <a th:href="@{/calendario/listado(id=${plan.id})}" class="taller-select-btn" style="color: #f8fafc; padding: 0.5rem; text-decoration: none; border-radius: 4px; display: block;">Ver Todos</a>
+                            <a th:href="@{/calendario/listado(id=${plan.id}, taller='Mecanico')}" class="taller-select-btn" style="color: #f8fafc; padding: 0.5rem; text-decoration: none; border-radius: 4px; display: block;">Mecánico</a>
+                            <a th:href="@{/calendario/listado(id=${plan.id}, taller='Instrumentista')}" class="taller-select-btn" style="color: #f8fafc; padding: 0.5rem; text-decoration: none; border-radius: 4px; display: block;">Instrumentista</a>
+                            <a th:href="@{/calendario/listado(id=${plan.id}, taller='Pintor')}" class="taller-select-btn" style="color: #f8fafc; padding: 0.5rem; text-decoration: none; border-radius: 4px; display: block;">Pintor</a>
+                            <a th:href="@{/calendario/listado(id=${plan.id}, taller='Civil')}" class="taller-select-btn" style="color: #f8fafc; padding: 0.5rem; text-decoration: none; border-radius: 4px; display: block;">Civil</a>
+                            <a th:href="@{/calendario/listado(id=${plan.id}, taller='Electricista')}" class="taller-select-btn" style="color: #f8fafc; padding: 0.5rem; text-decoration: none; border-radius: 4px; display: block;">Electricista</a>
+                        </div>
+                    </div>
+
+                    <!-- Controles de semana -->
+                    <div class="view-toggle">
+                        <button class="view-btn active-view" id="btnViewMonth" onclick="setMode('month')">Ver Todo</button>
+                        <button class="view-btn" id="btnViewWeek" onclick="setMode('week')">Ver por Semana</button>
+                    </div>
+                    <div class="week-nav" id="weekNavControls" style="display: none; align-items: center; gap: 0.5rem; background: rgba(30, 41, 59, 0.5); padding: 0.2rem; border-radius: 8px;">
+                        <button class="nav-arrow" id="btnPrevWeek" onclick="prevWeek()" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 0.3rem 0.6rem; font-size: 1.1rem;">&lt;</button>
+                        <span class="week-label" id="weekLabel" style="color: #f8fafc; font-weight: 500; min-width: 60px; text-align: center;">Sem. 1</span>
+                        <button class="nav-arrow" id="btnNextWeek" onclick="nextWeek()" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 0.3rem 0.6rem; font-size: 1.1rem;">&gt;</button>
                     </div>
 
                     <a th:href="@{/calendario(id=${plan.id})}" class="add-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; background: #475569;">
@@ -101,22 +118,16 @@
                 <table class="equipos-table">
                     <thead>
                         <tr>
-                            <th>Día Programado</th>
-                            <th>Tag</th>
-                            <th>Descripción</th>
-                            <th>Taller</th>
-                            <th>Duración</th>
-                            <th>N° de Orden</th>
+                            <th style="width: 15%; text-align: center;">Día Programado</th>
+                            <th style="width: 65%;">Tag</th>
+                            <th style="width: 20%; text-align: center;">N° de Orden</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="det : ${asignaciones}">
-                            <td style="font-weight: 600; color: #e2e8f0; text-align: center;" th:text="${det.dia}"></td>
-                            <td><span class="tag-badge" style="background: rgba(59,130,246,0.15); color: #93c5fd;" th:text="${det.equipo.tag}"></span></td>
-                            <td class="desc-cell" th:text="${det.equipo.descripcion}"></td>
-                            <td th:text="${det.equipo.tallerNombre}"></td>
-                            <td th:text="${det.equipo.duracion} + 'h'"></td>
-                            <td style="width: 180px;">
+                        <tr th:each="det : ${asignaciones}" class="asignacion-row" th:attr="data-dia=${det.dia}">
+                            <td style="font-weight: 600; color: #e2e8f0; text-align: center; font-size: 1rem;" th:text="${det.dia}"></td>
+                            <td><span class="tag-badge" style="background: rgba(59,130,246,0.15); color: #93c5fd; font-size: 1.15rem; padding: 0.5rem 1.2rem; font-weight: 600;" th:text="${det.equipo.tag}"></span></td>
+                            <td style="text-align: center;">
                                 <input type="text" class="order-input" 
                                        placeholder="N° de orden..." 
                                        th:value="${det.numeroOrden}" 
@@ -124,8 +135,11 @@
                                        onblur="guardarOrden(this)">
                             </td>
                         </tr>
-                        <tr th:if="${#lists.isEmpty(asignaciones)}">
-                            <td colspan="6" class="empty-state">No hay equipos asignados a este taller en la programación actual.</td>
+                        <tr id="emptyStateRow" th:if="${#lists.isEmpty(asignaciones)}">
+                            <td colspan="3" class="empty-state">No hay equipos asignados a este taller en la programación actual.</td>
+                        </tr>
+                        <tr id="weekEmptyStateRow" style="display: none;">
+                            <td colspan="3" class="empty-state">No hay equipos asignados en esta semana.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -137,11 +151,118 @@
     
     <script th:inline="javascript">
         const planId = /*[[${plan.id}]]*/ 0;
+        const diaSemanaInicio = /*[[${diaSemanaInicio}]]*/ 1;
+        const totalDias = /*[[${totalDias}]]*/ 31;
         
-        function cambiarTaller(taller) {
-            window.location.href = '/calendario/listado?id=' + planId + '&taller=' + taller;
+        // Logica Menú Taller
+        function toggleTallerMenu(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const menu = document.getElementById('tallerMenu');
+            menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
         }
 
+        document.addEventListener('click', () => {
+             const menu = document.getElementById('tallerMenu');
+             if(menu) menu.style.display = 'none';
+        });
+
+        // Hover styles para botones del taller
+        document.querySelectorAll('.taller-select-btn').forEach(btn => {
+            btn.addEventListener('mouseover', () => btn.style.background = 'rgba(255,255,255,0.1)');
+            btn.addEventListener('mouseout', () => btn.style.background = 'transparent');
+        });
+
+        // Logica Navegación por Semanas
+        let mode = 'month';
+        let currentWeekIndex = 0;
+        
+        // Calcular numero de celdas vacias para alinear dia 1
+        const emptyStartCells = diaSemanaInicio - 1;
+        // Total de "celdas" en la grilla visual de este mes
+        const totalCells = emptyStartCells + totalDias;
+        const totalWeeks = Math.ceil(totalCells / 7);
+
+        function setMode(newMode) {
+            mode = newMode;
+            const btnMonth = document.getElementById('btnViewMonth');
+            const btnWeek = document.getElementById('btnViewWeek');
+            const weekControls = document.getElementById('weekNavControls');
+
+            if (mode === 'week') {
+                btnWeek.classList.add('active-view');
+                btnMonth.classList.remove('active-view');
+                weekControls.style.display = 'flex';
+                currentWeekIndex = 0;
+                renderWeek();
+            } else {
+                btnMonth.classList.add('active-view');
+                btnWeek.classList.remove('active-view');
+                weekControls.style.display = 'none';
+                
+                // Mostrar todos
+                document.querySelectorAll('.asignacion-row').forEach(row => {
+                    row.style.display = 'table-row';
+                });
+                document.getElementById('weekEmptyStateRow').style.display = 'none';
+            }
+        }
+
+        function renderWeek() {
+            document.getElementById('weekLabel').textContent = `Sem. ${currentWeekIndex + 1}`;
+            
+            let itemsInWeek = 0;
+            document.querySelectorAll('.asignacion-row').forEach(row => {
+                const dia = parseInt(row.getAttribute('data-dia'));
+                if (isNaN(dia)) return;
+                
+                const cellIndex = emptyStartCells + (dia - 1);
+                const weekNum = Math.floor(cellIndex / 7);
+                
+                if (weekNum === currentWeekIndex) {
+                    row.style.display = 'table-row';
+                    itemsInWeek++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            const emptyStateOriginal = document.getElementById('emptyStateRow');
+            if (emptyStateOriginal && emptyStateOriginal.style.display !== 'none' && !/*[[${#lists.isEmpty(asignaciones)}]]*/ false) {
+                // If there originally were items but week is empty
+                emptyStateOriginal.style.display = 'none';
+            }
+
+            const weekEmpty = document.getElementById('weekEmptyStateRow');
+            if (/*[[${!#lists.isEmpty(asignaciones)}]]*/ true) {
+                weekEmpty.style.display = itemsInWeek === 0 ? 'table-row' : 'none';
+            }
+
+            document.getElementById('btnPrevWeek').disabled = (currentWeekIndex === 0);
+            document.getElementById('btnNextWeek').disabled = (currentWeekIndex === totalWeeks - 1);
+            
+            // Estilos para botones deshabilitados
+            document.getElementById('btnPrevWeek').style.opacity = (currentWeekIndex === 0) ? '0.3' : '1';
+            document.getElementById('btnPrevWeek').style.cursor = (currentWeekIndex === 0) ? 'default' : 'pointer';
+            document.getElementById('btnNextWeek').style.opacity = (currentWeekIndex === totalWeeks - 1) ? '0.3' : '1';
+            document.getElementById('btnNextWeek').style.cursor = (currentWeekIndex === totalWeeks - 1) ? 'default' : 'pointer';
+        }
+
+        function prevWeek() {
+            if (currentWeekIndex > 0) {
+                currentWeekIndex--;
+                renderWeek();
+            }
+        }
+
+        function nextWeek() {
+            if (currentWeekIndex < totalWeeks - 1) {
+                currentWeekIndex++;
+                renderWeek();
+            }
+        }
+
+        // Guardar Orden
         function guardarOrden(inputEl) {
             const idDetalle = inputEl.getAttribute('data-id');
             const valor = inputEl.value;
