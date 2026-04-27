@@ -41,6 +41,9 @@ public class Equipo {
     @Column(nullable = false, columnDefinition = "int default 0")
     private Integer criticidad = 0;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean reprogramado = false;
+
     public Equipo() {}
 
     public Equipo(String tag, String descripcion, String criterioProgramacion, String taller, String mesInicial, LocalDate fechaProxima, String duracion, String tipo, Double buque) {
@@ -97,6 +100,9 @@ public class Equipo {
 
     public Integer getCriticidad() { return criticidad; }
     public void setCriticidad(Integer criticidad) { this.criticidad = criticidad; }
+
+    public Boolean getReprogramado() { return reprogramado; }
+    public void setReprogramado(Boolean reprogramado) { this.reprogramado = reprogramado; }
 
     public String getTipo() { return tipo; }
     public void setTipo(String tipo) { this.tipo = tipo; }

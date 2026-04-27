@@ -291,6 +291,7 @@ public class ProgramacionController {
                             LocalDate baseDate = LocalDate.of(plan.getAnio(), plan.getMes(), 1);
                             LocalDate nextDate = calcularSiguienteFecha(baseDate, crit);
                             eq.setFechaProxima(nextDate);
+                            eq.setReprogramado(false);
                             equiposToSave.add(eq);
                         }
                     }
@@ -321,6 +322,7 @@ public class ProgramacionController {
                         LocalDate baseDate = LocalDate.of(plan.getAnio(), plan.getMes(), diaOriginal);
                         LocalDate nextDate = calcularSiguienteFecha(baseDate, crit);
                         eq.setFechaProxima(nextDate);
+                        eq.setReprogramado(false);
                         equiposToSave.add(eq);
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -417,6 +419,7 @@ public class ProgramacionController {
 
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
                 equipo.setFechaProxima(LocalDate.parse(nuevaFecha, formatter));
+                equipo.setReprogramado(true);
                 equipoRepository.save(equipo);
                 return ResponseEntity.ok().build();
             } catch (Exception e) {

@@ -126,7 +126,10 @@
                     <tbody>
                         <tr th:each="det : ${asignaciones}" class="asignacion-row" th:attr="data-dia=${det.dia}">
                             <td style="font-weight: 600; color: #e2e8f0; text-align: center; font-size: 1rem;" th:text="${det.dia}"></td>
-                            <td><span class="tag-badge" style="background: rgba(59,130,246,0.15); color: #93c5fd; font-size: 1.15rem; padding: 0.5rem 1.2rem; font-weight: 600;" th:text="${det.equipo.tag}"></span></td>
+                            <td style="display: flex; align-items: center; gap: 0.5rem; height: 100%; padding-top: 1rem;">
+                                <span class="tag-badge" style="background: rgba(59,130,246,0.15); color: #93c5fd; font-size: 1.15rem; padding: 0.5rem 1.2rem; font-weight: 600; border-radius: 4px;" th:text="${det.equipo.tag}"></span>
+                                <span th:if="${det.equipo.reprogramado != null && det.equipo.reprogramado}" title="Reprogramado" style="font-size: 0.85rem; font-weight: 700; color: #f59e0b; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.2rem 0.5rem; border-radius: 4px;">R</span>
+                            </td>
                             <td style="text-align: center;">
                                 <input type="text" class="order-input" 
                                        placeholder="N° de orden..." 

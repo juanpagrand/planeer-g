@@ -47,6 +47,15 @@ public class EquipoController {
 
     @PostMapping("/equipos/guardar")
     public String guardarEquipo(@ModelAttribute Equipo equipo) {
+        if (equipo.getId() != null) {
+            Equipo existente = equipoRepository.findById(equipo.getId()).orElse(null);
+            if (existente != null && equipo.getReprogramado() == null) {
+                equipo.setReprogramado(existente.getReprogramado() != null ? existente.getReprogramado() : false);
+            }
+        }
+        if (equipo.getReprogramado() == null) {
+            equipo.setReprogramado(false);
+        }
         if (equipo.getActivo() == null) {
             equipo.setActivo(true);
         }
