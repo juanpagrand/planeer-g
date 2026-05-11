@@ -291,9 +291,9 @@ public class ProgramacionController {
                             LocalDate baseDate = LocalDate.of(plan.getAnio(), plan.getMes(), 1);
                             LocalDate nextDate = calcularSiguienteFecha(baseDate, crit);
                             eq.setFechaProxima(nextDate);
-                            eq.setReprogramado(false);
-                            equiposToSave.add(eq);
                         }
+                        eq.setReprogramado(false);
+                        equiposToSave.add(eq);
                     }
                     continue; // skip the next auto-calc for reprogramados/no_ejecutados
                 }
@@ -302,6 +302,7 @@ public class ProgramacionController {
                 
                 if ("correctivo".equalsIgnoreCase(eq.getTipo())) {
                     eq.setActivo(false);
+                    eq.setReprogramado(false);
                     equiposToSave.add(eq);
                     continue;
                 }
@@ -322,12 +323,12 @@ public class ProgramacionController {
                         LocalDate baseDate = LocalDate.of(plan.getAnio(), plan.getMes(), diaOriginal);
                         LocalDate nextDate = calcularSiguienteFecha(baseDate, crit);
                         eq.setFechaProxima(nextDate);
-                        eq.setReprogramado(false);
-                        equiposToSave.add(eq);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
+                eq.setReprogramado(false);
+                equiposToSave.add(eq);
             }
             if(!equiposToSave.isEmpty()) {
                 equipoRepository.saveAll(equiposToSave);
